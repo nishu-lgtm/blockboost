@@ -17,6 +17,7 @@ import {
   Settings,
   LogOut,
   ChevronRight,
+  Radio,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -58,6 +59,12 @@ const navItems = [
     label: "AI Copilot",
     href: "/dashboard/copilot",
     icon: Bot,
+  },
+  {
+    label: "Social Listening",
+    href: "/dashboard/social",
+    icon: Radio,
+    badge: "Growth+",
   },
   {
     label: "Alerts",
@@ -142,6 +149,11 @@ export default function Sidebar() {
               {item.label === "AI Copilot" && (
                 <span className="ml-auto text-xs bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full font-medium">
                   New
+                </span>
+              )}
+              {"badge" in item && item.badge && item.label !== "AI Copilot" && (
+                <span className="ml-auto text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">
+                  {item.badge as string}
                 </span>
               )}
             </Link>

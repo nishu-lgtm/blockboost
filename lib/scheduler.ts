@@ -8,6 +8,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { runScan } from "@/lib/scan-engine";
+import { scanProject } from "@/lib/social-scanner";
 
 export interface DailyScanReport {
   projectsScanned: number;
@@ -44,6 +45,20 @@ export async function runDailyScansForAllProjects(): Promise<DailyScanReport> {
         `[scheduler] Running daily scan for project "${project.brandName}" (${project.id}) plan=${plan}`
       );
       await runScan(project.id, plan);
+
+      // Run social scanner for Growth+ projects
+      if (plan === "GROWTH" || plan === "ENTERPRISE") {
+        try {
+          const socialResults = await scanProject(project.id);
+          console.log(
+            `[scheduler] Social scan for ${project.id}: ` +
+            `reddit=${socialResults.reddit} quora=${socialResults.quora} linkedin=${socialResults.linkedin}`
+          );
+        } catch (socialErr) {
+          console.error(`[scheduler] Social scan failed for ${project.id}:`, socialErr);
+        }
+      }
+
       report.projectsScanned++;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

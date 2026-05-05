@@ -62,6 +62,26 @@ enum AdminRole {
   SUPERADMIN
 }
 
+enum SocialPlatform {
+  REDDIT
+  QUORA
+  LINKEDIN
+}
+
+enum SocialOpportunityStatus {
+  NEW
+  VIEWED
+  REPLIED
+  DISMISSED
+  SNOOZED
+}
+
+enum SocialReplyTone {
+  HELPFUL
+  PROFESSIONAL
+  CASUAL
+}
+
 // ─────────────────────────────────────────────────────────────
 // Auth (NextAuth adapter models)
 // ─────────────────────────────────────────────────────────────
@@ -186,6 +206,8 @@ model Project {
   copilotSessions CopilotSession[]
   alerts          Alert[]
   reports         Report[]
+  socialOpportunities SocialOpportunity[]
+  socialSettings  SocialSettings?
 }
 
 model Competitor {
@@ -490,4 +512,77 @@ model ScheduledEmail {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([sendAt, cancelled, sentAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Social Listening
+// ─────────────────────────────────────────────────────────────
+
+model SocialOpportunity {
+  id                    String                  @id @default(cuid())
+  projectId             String
+  platform              SocialPlatform
+  url                   String
+  title                 String
+  body                  String                  @db.Text
+  author                String
+  subreddit             String?
+  upvotes               Int                     @default(0)
+  commentCount          Int                     @default(0)
+  aiCitationProbability Int                     @default(0)
+  relevanceScore        Int                     @default(0)
+  keywords              String[]
+  status                SocialOpportunityStatus @default(NEW)
+  foundAt               DateTime                @default(now())
+  repliedAt             DateTime?
+  snoozedUntil          DateTime?
+  externalId            String?                 // platform-specific post ID for dedup
+
+  project Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  replies SocialReply[]
+
+  @@unique([projectId, url])
+  @@index([projectId, status, aiCitationProbability])
+  @@index([projectId, foundAt])
+}
+
+model SocialReply {
+  id             String          @id @default(cuid())
+  opportunityId  String
+  projectId      String
+  draftText      String          @db.Text
+  finalText      String?         @db.Text
+  tone           SocialReplyTone @default(HELPFUL)
+  approved       Boolean         @default(false)
+  postedAt       DateTime?
+  postUrl        String?
+  upvotesReceived Int?
+  aiCited        Boolean         @default(false)
+  aiCitedBy      String[]        // e.g. ["Perplexity", "ChatGPT"]
+  aiCitedAt      DateTime?
+  createdAt      DateTime        @default(now())
+
+  opportunity SocialOpportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([opportunityId])
+}
+
+model SocialSettings {
+  id                      String         @id @default(cuid())
+  projectId               String         @unique
+  redditEnabled           Boolean        @default(true)
+  quoraEnabled            Boolean        @default(false)
+  linkedinEnabled         Boolean        @default(false)
+  monitorKeywords         String[]
+  excludeKeywords         String[]
+  targetSubreddits        String[]
+  minimumUpvotes          Int            @default(5)
+  minimumAICitationScore  Int            @default(40)
+  notifyOnNew             Boolean        @default(true)
+  guidelinesAcceptedAt    DateTime?
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
