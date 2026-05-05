@@ -1,0 +1,20 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/daily-scan",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/weekly-report",
+      "schedule": "0 8 * * 1"
+    },
+    {
+      "path": "/api/cron/resume-paused",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/email-sequence",
+      "schedule": "0 * * * *"
+    }
+  ]
+}

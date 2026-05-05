@@ -1,0 +1,493 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────────────────────
+
+enum Plan {
+  FREE
+  STARTER
+  GROWTH
+  ENTERPRISE
+}
+
+enum Platform {
+  CHATGPT
+  PERPLEXITY
+  GEMINI
+  COPILOT
+  GROK
+  GOOGLE_AI_OVERVIEWS
+}
+
+enum Sentiment {
+  POSITIVE
+  NEUTRAL
+  NEGATIVE
+  NOT_MENTIONED
+}
+
+enum BriefStatus {
+  PENDING
+  GENERATED
+  PUBLISHED
+}
+
+enum AlertType {
+  MENTION_RATE_DROP
+  NEW_CITATION
+  COMPETITOR_SURGE
+  HALLUCINATION_DETECTED
+  SCAN_COMPLETE
+}
+
+enum ReportType {
+  WEEKLY
+  MONTHLY
+  CUSTOM
+  ONDEMAND
+}
+
+enum AdminRole {
+  NONE
+  VIEWER
+  SUPPORT
+  ADMIN
+  SUPERADMIN
+}
+
+// ─────────────────────────────────────────────────────────────
+// Auth (NextAuth adapter models)
+// ─────────────────────────────────────────────────────────────
+
+model User {
+  id                   String    @id @default(cuid())
+  email                String    @unique
+  name                 String?
+  password             String?
+  image                String?
+  emailVerified        DateTime?
+  plan                 Plan      @default(FREE)
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?   @unique
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  // Google Search Console integration
+  gscAccessToken       String?   @db.Text
+  gscRefreshToken      String?   @db.Text
+  gscTokenExpiry       DateTime?
+  gscConnected         Boolean   @default(false)
+  gscProperty          String?   // selected GSC property URL
+
+  // Notification preferences
+  emailNotifications   Boolean   @default(true)
+  slackWebhookUrl      String?
+  slackConnected       Boolean   @default(false)
+
+  // Email preference centre (granular opt-outs)
+  emailPrefWeeklyReport   Boolean  @default(true)
+  emailPrefMonthlySummary Boolean  @default(true)
+  emailPrefFeatureNews    Boolean  @default(true)
+  emailPrefAlerts         Boolean  @default(true)
+  emailPrefTips           Boolean  @default(true)
+
+  // Admin fields
+  adminRole            AdminRole  @default(NONE)
+  adminBanned          Boolean    @default(false)
+  adminBanReason       String?
+  totpSecret           String?
+  totpEnabled          Boolean    @default(false)
+  trialEndsAt          DateTime?
+
+  // Subscription pause
+  pausedAt             DateTime?
+  pauseUntil           DateTime?
+
+  accounts              Account[]
+  sessions              Session[]
+  projects              Project[]
+  subscriptionEvents    SubscriptionEvent[]
+  copilotSessions       CopilotSession[]
+  alerts                Alert[]
+  reports               Report[]
+  reportBranding        ReportBranding?
+  auditLogsAsAdmin      AdminAuditLog[]      @relation("AuditAdmin")
+  adminNotesAbout       AdminNote[]          @relation("NoteSubject")
+  adminNotesAuthored    AdminNote[]          @relation("NoteAuthor")
+  cancellationRecords   CancellationRecord[]
+  emailsSent            EmailSent[]
+  activationState       UserActivationState?
+  scheduledEmails       ScheduledEmail[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Core domain models
+// ─────────────────────────────────────────────────────────────
+
+model Project {
+  id         String   @id @default(cuid())
+  name       String
+  websiteUrl String
+  brandName  String
+  userId     String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  competitors     Competitor[]
+  prompts         Prompt[]
+  mentions        Mention[]
+  citations       Citation[]
+  auditReports    AuditReport[]
+  contentBriefs   ContentBrief[]
+  copilotSessions CopilotSession[]
+  alerts          Alert[]
+  reports         Report[]
+}
+
+model Competitor {
+  id         String   @id @default(cuid())
+  brandName  String
+  websiteUrl String
+  projectId  String
+  createdAt  DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Prompt {
+  id             String    @id @default(cuid())
+  text           String    @db.Text
+  category       String
+  projectId      String
+  createdAt      DateTime  @default(now())
+
+  // Google Search Console data (populated by GSC import)
+  gscImpressions Int?
+  gscClicks      Int?
+  gscPosition    Float?
+  gscLastSync    DateTime?
+
+  project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  mentions Mention[]
+}
+
+model Mention {
+  id                   String    @id @default(cuid())
+  promptId             String
+  projectId            String
+  platform             Platform
+  brandMentioned       Boolean   @default(false)
+  competitorsMentioned String[]
+  sentiment            Sentiment @default(NOT_MENTIONED)
+  responseText         String    @db.Text
+  mentionRank          Int?
+  createdAt            DateTime  @default(now())
+
+  prompt    Prompt     @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  citations Citation[]
+}
+
+model Citation {
+  id        String   @id @default(cuid())
+  mentionId String
+  projectId String
+  url       String
+  domain    String
+  isOwned   Boolean  @default(false)
+  platform  Platform
+  createdAt DateTime @default(now())
+
+  mention Mention @relation(fields: [mentionId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model AuditReport {
+  id                String   @id @default(cuid())
+  projectId         String
+  url               String
+  overallScore      Int
+  crawlabilityScore Int
+  schemaScore       Int
+  contentScore      Int
+  authorityScore    Int
+  robotsTxtBlocking Boolean  @default(false)
+  schemaTypesFound  String[]
+  recommendations   Json
+  rawData           Json
+  createdAt         DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model ContentBrief {
+  id           String      @id @default(cuid())
+  projectId    String
+  promptText   String      @db.Text
+  topic        String
+  status       BriefStatus @default(PENDING)
+  briefContent Json?
+  schemaMarkup String?     @db.Text
+  createdAt    DateTime    @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+// ─────────────────────────────────────────────────────────────
+// AI Copilot
+// ─────────────────────────────────────────────────────────────
+
+model CopilotSession {
+  id        String   @id @default(cuid())
+  userId    String
+  projectId String
+  title     String   @default("New conversation")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project  Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  messages CopilotMessage[]
+}
+
+model CopilotMessage {
+  id        String   @id @default(cuid())
+  sessionId String
+  role      String   // "user" | "assistant"
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  session CopilotSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+model SubscriptionEvent {
+  id            String   @id @default(cuid())
+  userId        String
+  type          String
+  stripeEventId String?  @unique
+  data          Json
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─────────────────────────────────────────────────────────────
+// Alerts
+// ─────────────────────────────────────────────────────────────
+
+model Alert {
+  id        String    @id @default(cuid())
+  projectId String
+  userId    String
+  type      AlertType
+  message   String    @db.Text
+  data      Json      @default("{}")
+  read      Boolean   @default(false)
+  createdAt DateTime  @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─────────────────────────────────────────────────────────────
+// Reports
+// ─────────────────────────────────────────────────────────────
+
+model Report {
+  id          String     @id @default(cuid())
+  projectId   String
+  userId      String
+  reportType  ReportType @default(ONDEMAND)
+  periodStart DateTime
+  periodEnd   DateTime
+  data        Json
+  pdfUrl      String?
+  shareToken  String     @unique @default(cuid())
+  viewCount   Int        @default(0)
+  createdAt   DateTime   @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ReportBranding {
+  id            String  @id @default(cuid())
+  userId        String  @unique
+  logoUrl       String?
+  primaryColor  String  @default("#4F46E5")
+  companyName   String  @default("VisibilityIQ")
+  tagline       String  @default("AI Visibility Intelligence")
+  showWatermark Boolean @default(true)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─────────────────────────────────────────────────────────────
+// Admin models
+// ─────────────────────────────────────────────────────────────
+
+model AdminAuditLog {
+  id          String   @id @default(cuid())
+  adminUserId String
+  action      String
+  targetType  String?
+  targetId    String?
+  details     Json     @default("{}")
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+
+  adminUser User @relation("AuditAdmin", fields: [adminUserId], references: [id])
+}
+
+model AdminNote {
+  id        String   @id @default(cuid())
+  userId    String
+  adminId   String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  user  User @relation("NoteSubject", fields: [userId], references: [id], onDelete: Cascade)
+  admin User @relation("NoteAuthor", fields: [adminId], references: [id])
+}
+
+model AppBanner {
+  id          String    @id @default(cuid())
+  message     String
+  type        String    @default("info")
+  ctaText     String?
+  ctaUrl      String?
+  audience    String    @default("everyone")
+  dismissable Boolean   @default(true)
+  active      Boolean   @default(false)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  createdAt   DateTime  @default(now())
+  createdBy   String
+}
+
+model AdminEmail {
+  id        String   @id @default(cuid())
+  subject   String
+  fromName  String
+  fromEmail String
+  audience  String
+  sentTo    Int      @default(0)
+  htmlBody  String   @db.Text
+  status    String   @default("sent")
+  sentAt    DateTime @default(now())
+  sentBy    String
+}
+
+// ─────────────────────────────────────────────────────────────
+// Cancellation flow
+// ─────────────────────────────────────────────────────────────
+
+model CancellationRecord {
+  id               String   @id @default(cuid())
+  userId           String
+  reason           String
+  otherText        String?
+  offerShown       String?
+  offerAccepted    Boolean  @default(false)
+  featureRequested String?
+  competitorNamed  String?
+  pauseDuration    Int?
+  wantNotified     Boolean  @default(false)
+  wantWinback      Boolean  @default(false)
+  cancelled        Boolean  @default(true)
+  createdAt        DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─────────────────────────────────────────────────────────────
+// Email activation sequence
+// ─────────────────────────────────────────────────────────────
+
+model EmailSent {
+  id              String    @id @default(cuid())
+  userId          String
+  sequence        String    // "A", "B", "C"
+  step            String    // "A1", "A2", "B1", etc.
+  subject         String
+  sentAt          DateTime  @default(now())
+  openedAt        DateTime?
+  clickedAt       DateTime?
+  resendMessageId String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, sequence, step])
+}
+
+model UserActivationState {
+  userId          String    @id
+  signedUp        DateTime?
+  ranFirstScan    DateTime?
+  addedCompetitor DateTime?
+  generatedBrief  DateTime?
+  connectedGSC    DateTime?
+  convertedToPaid DateTime?
+  generatedReport DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ScheduledEmail {
+  id        String    @id @default(cuid())
+  userId    String
+  sequence  String
+  step      String
+  sendAt    DateTime
+  sentAt    DateTime?
+  cancelled Boolean   @default(false)
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([sendAt, cancelled, sentAt])
+}
