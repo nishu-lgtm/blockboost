@@ -149,12 +149,12 @@ export default function SocialPage() {
   useEffect(() => {
     fetch("/api/projects/list")
       .then((r) => r.json())
-      .then((data: { projects?: Array<{ id: string; brandName: string; user?: { plan?: string } }> }) => {
+      .then((data: { projects?: Array<{ id: string; brandName: string; userPlan?: string }> }) => {
         const first = data.projects?.[0];
         if (first) {
           setProjectId(first.id);
           setBrandName(first.brandName);
-          setPlan(first.user?.plan ?? "FREE");
+          setPlan(first.userPlan ?? "FREE");
         }
       })
       .catch(() => {});

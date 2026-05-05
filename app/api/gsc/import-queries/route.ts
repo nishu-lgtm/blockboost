@@ -50,7 +50,7 @@ Definitions:
 - local: location-based queries
 - informational: how-to, educational, or factual queries
 
-Return ONLY a JSON array: [{"query": "...", "category": "..."}]
+Return ONLY valid JSON in this exact shape: {"categories": [{"query": "...", "category": "..."}]}
 
 Queries: ${JSON.stringify(queries)}`;
 
@@ -63,7 +63,7 @@ Queries: ${JSON.stringify(queries)}`;
 
     const raw = res.choices[0]?.message?.content ?? "{}";
     const parsed = JSON.parse(raw);
-    const arr: { query: string; category: string }[] = parsed.categories ?? parsed.queries ?? parsed.result ?? [];
+    const arr: { query: string; category: string }[] = parsed.categories ?? [];
 
     const map: Record<string, string> = {};
     for (const item of arr) {

@@ -16,29 +16,46 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
+import { formatDistanceToNow } from "date-fns";
 
 export default async function DashboardPage() {
   const session = await auth();
   const userId = session?.user?.id as string;
 
-  const projects = await prisma.project.findMany({
+  const project = await prisma.project.findFirst({
     where: { userId },
     orderBy: { createdAt: "desc" },
-    take: 5,
+    include: {
+      mentions: {
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        include: { prompt: true },
+      },
+      competitors: { select: { id: true } },
+      _count: { select: { mentions: true } },
+    },
   });
 
-  const hasProjects = projects.length > 0;
+  const hasProjects = !!project;
+
+  // Compute real stats
+  const totalMentions = project?._count.mentions ?? 0;
+  const citedMentions = project?.mentions.filter((m) => m.brandMentioned).length ?? 0;
+  const visibilityScore =
+    totalMentions > 0 ? Math.round((citedMentions / totalMentions) * 100) : 0;
+  const competitorCount = project?.competitors.length ?? 0;
 
   return (
     <div className="flex flex-col flex-1">
-      <Topbar
-        title="Overview"
-        description="Your AI visibility dashboard"
-      />
-
+      <Topbar title="Overview" description="Your AI visibility dashboard" />
       <main className="flex-1 p-6">
         {hasProjects ? (
-          <DashboardWithData />
+          <DashboardWithData
+            visibilityScore={visibilityScore}
+            totalMentions={totalMentions}
+            competitorCount={competitorCount}
+            recentMentions={project!.mentions}
+          />
         ) : (
           <EmptyState userName={session?.user?.name ?? undefined} />
         )}
@@ -47,13 +64,14 @@ export default async function DashboardPage() {
   );
 }
 
+// ─── Empty state ──────────────────────────────────────────────────────────────
+
 function EmptyState({ userName }: { userName?: string }) {
   const firstName = userName?.split(" ")[0] ?? "there";
 
   return (
     <div className="flex flex-col items-center justify-center flex-1 py-20">
       <div className="max-w-lg text-center">
-        {/* Illustration */}
         <div className="relative mx-auto mb-8 w-32 h-32">
           <div className="absolute inset-0 bg-indigo-100 rounded-3xl" />
           <div className="absolute inset-3 bg-indigo-50 rounded-2xl flex items-center justify-center">
@@ -79,44 +97,27 @@ function EmptyState({ userName }: { userName?: string }) {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center mb-10">
-          <Button className="bg-indigo-600 hover:bg-indigo-700 text-white h-11 px-6">
-            <Plus className="mr-2 h-4 w-4" />
-            Add your first project
-          </Button>
+          <Link href="/onboarding">
+            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white h-11 px-6">
+              <Plus className="mr-2 h-4 w-4" />
+              Add your first project
+            </Button>
+          </Link>
           <Button variant="outline" className="h-11 px-6 border-slate-300">
             Watch 2-min tutorial
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
 
-        {/* Quick start steps */}
         <div className="bg-white border border-slate-200 rounded-2xl p-6 text-left">
           <h3 className="text-sm font-semibold text-slate-700 mb-4 uppercase tracking-wider">
             Quick setup (3 steps)
           </h3>
           <div className="space-y-4">
             {[
-              {
-                step: "1",
-                title: "Add your project",
-                desc: "Enter your brand name and domain to start tracking",
-                icon: Globe,
-                done: false,
-              },
-              {
-                step: "2",
-                title: "Choose AI models to monitor",
-                desc: "Select ChatGPT, Claude, Gemini, and more",
-                icon: Brain,
-                done: false,
-              },
-              {
-                step: "3",
-                title: "Add competitors",
-                desc: "Track how you compare against key rivals",
-                icon: Users2,
-                done: false,
-              },
+              { step: "1", title: "Add your project", desc: "Enter your brand name and domain to start tracking", icon: Globe },
+              { step: "2", title: "Choose AI models to monitor", desc: "Select ChatGPT, Claude, Gemini, and more", icon: Brain },
+              { step: "3", title: "Add competitors", desc: "Track how you compare against key rivals", icon: Users2 },
             ].map((item) => (
               <div key={item.step} className="flex items-start gap-4">
                 <div className="flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 text-slate-500 text-xs font-bold shrink-0 mt-0.5">
@@ -135,27 +136,47 @@ function EmptyState({ userName }: { userName?: string }) {
   );
 }
 
-function DashboardWithData() {
+// ─── Dashboard with real data ─────────────────────────────────────────────────
+
+interface Mention {
+  id: string;
+  brandMentioned: boolean;
+  platform: string;
+  createdAt: Date;
+  prompt: { text: string } | null;
+}
+
+function DashboardWithData({
+  visibilityScore,
+  totalMentions,
+  competitorCount,
+  recentMentions,
+}: {
+  visibilityScore: number;
+  totalMentions: number;
+  competitorCount: number;
+  recentMentions: Mention[];
+}) {
   const stats = [
     {
       label: "AI Visibility Score",
-      value: "74%",
-      change: "+12%",
+      value: `${visibilityScore}%`,
+      change: null as string | null,
       icon: BarChart3,
       color: "text-indigo-600",
       bg: "bg-indigo-50",
     },
     {
-      label: "Total Citations",
-      value: "1,284",
-      change: "+8%",
+      label: "Total Scans",
+      value: totalMentions.toLocaleString(),
+      change: null,
       icon: Quote,
       color: "text-green-600",
       bg: "bg-green-50",
     },
     {
       label: "AI Models Tracked",
-      value: "6",
+      value: "3",
       change: null,
       icon: Brain,
       color: "text-blue-600",
@@ -163,20 +184,12 @@ function DashboardWithData() {
     },
     {
       label: "Competitors",
-      value: "12",
+      value: competitorCount.toString(),
       change: null,
       icon: Users2,
       color: "text-purple-600",
       bg: "bg-purple-50",
     },
-  ];
-
-  const recentCitations = [
-    { model: "ChatGPT", query: "best CRM software for startups", cited: true, time: "2m ago" },
-    { model: "Claude", query: "top project management tools", cited: true, time: "15m ago" },
-    { model: "Gemini", query: "enterprise software recommendations", cited: false, time: "1h ago" },
-    { model: "Perplexity", query: "SaaS tools for marketing teams", cited: true, time: "2h ago" },
-    { model: "ChatGPT", query: "best analytics platforms 2025", cited: false, time: "3h ago" },
   ];
 
   return (
@@ -188,7 +201,7 @@ function DashboardWithData() {
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-3">
                 <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${stat.bg}`}>
-                  <stat.icon className={`h-4.5 w-4.5 ${stat.color}`} />
+                  <stat.icon className={`h-4 w-4 ${stat.color}`} />
                 </div>
                 {stat.change && (
                   <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
@@ -205,11 +218,11 @@ function DashboardWithData() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Citations */}
+        {/* Recent scans */}
         <Card className="border-slate-200 lg:col-span-2">
           <CardHeader className="pb-3 flex-row items-center justify-between">
             <CardTitle className="text-base font-semibold text-slate-800">
-              Recent Citations
+              Recent Scans
             </CardTitle>
             <Link href="/dashboard/citations">
               <Button variant="ghost" size="sm" className="text-indigo-600 h-8 text-xs">
@@ -219,35 +232,45 @@ function DashboardWithData() {
             </Link>
           </CardHeader>
           <CardContent>
-            <div className="space-y-0">
-              {recentCitations.map((citation, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-3 py-3 border-b border-slate-50 last:border-0"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-                    <Brain className="h-4 w-4 text-slate-500" />
+            {recentMentions.length === 0 ? (
+              <div className="py-8 text-center text-slate-400 text-sm">
+                No scans yet — run your first scan from the AI Visibility page.
+              </div>
+            ) : (
+              <div className="space-y-0">
+                {recentMentions.map((mention) => (
+                  <div
+                    key={mention.id}
+                    className="flex items-center gap-3 py-3 border-b border-slate-50 last:border-0"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                      <Brain className="h-4 w-4 text-slate-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-slate-800 truncate">
+                        {mention.prompt?.text ?? "Unknown prompt"}
+                      </p>
+                      <p className="text-xs text-slate-400">{mention.platform}</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Badge
+                        variant="outline"
+                        className={
+                          mention.brandMentioned
+                            ? "bg-green-50 text-green-700 border-green-200 text-xs"
+                            : "bg-red-50 text-red-600 border-red-200 text-xs"
+                        }
+                      >
+                        {mention.brandMentioned ? "Cited" : "Not cited"}
+                      </Badge>
+                      <span className="text-xs text-slate-400">
+                        {formatDistanceToNow(new Date(mention.createdAt), { addSuffix: true })}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-slate-800 truncate">{citation.query}</p>
-                    <p className="text-xs text-slate-400">{citation.model}</p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Badge
-                      variant="outline"
-                      className={
-                        citation.cited
-                          ? "bg-green-50 text-green-700 border-green-200 text-xs"
-                          : "bg-red-50 text-red-600 border-red-200 text-xs"
-                      }
-                    >
-                      {citation.cited ? "Cited" : "Not cited"}
-                    </Badge>
-                    <span className="text-xs text-slate-400">{citation.time}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 

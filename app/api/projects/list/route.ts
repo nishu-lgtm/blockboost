@@ -9,13 +9,23 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const projects = await prisma.project.findMany({
-      where: { userId: session.user.id },
-      select: { id: true, name: true, brandName: true },
-      orderBy: { createdAt: "asc" },
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: {
+        plan: true,
+        projects: {
+          select: { id: true, name: true, brandName: true },
+          orderBy: { createdAt: "asc" },
+        },
+      },
     });
 
-    return NextResponse.json(projects);
+    const projects = (user?.projects ?? []).map((p) => ({
+      ...p,
+      userPlan: user?.plan ?? "FREE",
+    }));
+
+    return NextResponse.json({ projects });
   } catch (error) {
     console.error("Projects list error:", error);
     return NextResponse.json({ error: "Failed to load projects." }, { status: 500 });

@@ -16,12 +16,14 @@ import {
   Bell,
   Settings,
   LogOut,
-  ChevronRight,
+  ChevronDown,
   Radio,
+  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSession } from "next-auth/react";
+import { useEffect, useState, useRef } from "react";
 
 const navItems = [
   {
@@ -48,7 +50,7 @@ const navItems = [
   {
     label: "Content Briefs",
     href: "/dashboard/content-briefs",
-    icon: FileText,
+    icon: BookOpen,
   },
   {
     label: "Audit Tool",
@@ -83,9 +85,42 @@ const navItems = [
   },
 ];
 
+interface Project {
+  id: string;
+  name: string;
+  brandName: string;
+}
+
 export default function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [activeProject, setActiveProject] = useState<Project | null>(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Load projects
+  useEffect(() => {
+    fetch("/api/projects/list")
+      .then((r) => r.json())
+      .then((data) => {
+        const list: Project[] = data.projects ?? [];
+        setProjects(list);
+        if (list.length > 0) setActiveProject(list[0]);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   function isActive(item: { href: string; exact?: boolean }) {
     if (item.exact) return pathname === item.href;
@@ -101,6 +136,8 @@ export default function Sidebar() {
         .slice(0, 2)
     : "U";
 
+  const projectInitial = activeProject?.brandName?.[0]?.toUpperCase() ?? "P";
+
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-slate-200 flex flex-col z-40">
       {/* Logo */}
@@ -112,16 +149,54 @@ export default function Sidebar() {
       </div>
 
       {/* Project selector */}
-      <div className="px-4 py-3 border-b border-slate-100">
-        <button className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors text-left">
+      <div className="px-4 py-3 border-b border-slate-100" ref={dropdownRef}>
+        <button
+          onClick={() => projects.length > 1 && setDropdownOpen((o) => !o)}
+          className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors text-left"
+        >
           <div className="flex items-center gap-2 min-w-0">
             <div className="w-6 h-6 rounded-md bg-indigo-100 flex items-center justify-center shrink-0">
-              <span className="text-xs font-bold text-indigo-600">A</span>
+              <span className="text-xs font-bold text-indigo-600">{projectInitial}</span>
             </div>
-            <span className="text-sm font-medium text-slate-700 truncate">Acme Corp</span>
+            <span className="text-sm font-medium text-slate-700 truncate">
+              {activeProject?.brandName ?? "Loading…"}
+            </span>
           </div>
-          <ChevronRight className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+          {projects.length > 1 && (
+            <ChevronDown className={cn("h-3.5 w-3.5 text-slate-400 shrink-0 transition-transform", dropdownOpen && "rotate-180")} />
+          )}
         </button>
+
+        {/* Dropdown */}
+        {dropdownOpen && projects.length > 1 && (
+          <div className="mt-1 bg-white border border-slate-200 rounded-lg shadow-md overflow-hidden">
+            {projects.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => {
+                  setActiveProject(p);
+                  setDropdownOpen(false);
+                }}
+                className={cn(
+                  "w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-slate-50 transition-colors",
+                  activeProject?.id === p.id && "bg-indigo-50 text-indigo-700 font-medium"
+                )}
+              >
+                <div className="w-5 h-5 rounded bg-indigo-100 flex items-center justify-center shrink-0">
+                  <span className="text-xs font-bold text-indigo-600">{p.brandName[0]?.toUpperCase()}</span>
+                </div>
+                {p.brandName}
+              </button>
+            ))}
+            <Link
+              href="/onboarding"
+              onClick={() => setDropdownOpen(false)}
+              className="flex items-center gap-2 px-3 py-2 text-sm text-indigo-600 hover:bg-indigo-50 border-t border-slate-100 font-medium"
+            >
+              + Add project
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Navigation */}

@@ -52,7 +52,7 @@ export default function ReportsPage() {
 
   // Fetch projects
   useEffect(() => {
-    fetch("/api/projects")
+    fetch("/api/projects/list")
       .then((r) => r.json())
       .then((data) => {
         const list: Project[] = data.projects ?? [];

@@ -130,6 +130,11 @@ export async function POST(req: NextRequest) {
 
   const shareUrl = `${process.env.NEXTAUTH_URL ?? ""}/report/${report.shareToken}`;
 
+  // Cancel the B2 "nudge to generate report" email now that one has been generated
+  import("@/lib/email-triggers")
+    .then(({ onGeneratedReport }) => onGeneratedReport(userId).catch(() => {}))
+    .catch(() => {});
+
   return NextResponse.json({
     reportId: report.id,
     shareToken: report.shareToken,
