@@ -276,12 +276,18 @@ export default function HomePage() {
             ))}
           </div>
 
-          <div className="text-center mt-10">
+          <div className="text-center mt-10 flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <a
+              href="/demo/audit"
+              className="bg-amber-500 hover:bg-amber-600 text-white font-semibold px-6 py-3 rounded-xl transition-colors"
+            >
+              ⚡ Run a free audit on your site
+            </a>
             <a
               href="/report/demo"
               className="text-amber-600 font-semibold hover:text-amber-700 transition-colors"
             >
-              See a sample report →
+              Or see a sample report →
             </a>
           </div>
         </div>

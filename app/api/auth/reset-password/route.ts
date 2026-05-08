@@ -3,10 +3,11 @@ import { z } from "zod";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { validatePassword } from "@/lib/password-policy";
 
 const bodySchema = z.object({
   token: z.string().min(1),
-  newPassword: z.string().min(8),
+  newPassword: z.string().min(1),
 });
 
 const TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
@@ -41,12 +42,17 @@ export async function POST(req: Request) {
   const parsed = bodySchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "Password must be at least 8 characters" },
+      { error: parsed.error.issues[0]?.message ?? "Invalid input" },
       { status: 400 }
     );
   }
 
   const { token, newPassword } = parsed.data;
+
+  const policy = validatePassword(newPassword);
+  if (!policy.ok) {
+    return NextResponse.json({ error: policy.error }, { status: 400 });
+  }
 
   const verified = verifyResetToken(token);
   if (!verified) {

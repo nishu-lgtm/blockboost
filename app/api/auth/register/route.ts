@@ -1,7 +1,18 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { validatePassword } from "@/lib/password-policy";
+import { verifyTurnstile } from "@/lib/turnstile";
+import { sendVerificationEmail } from "@/lib/email-verification";
+
+const bodySchema = z.object({
+  name: z.string().min(1, "Name is required").max(120),
+  email: z.string().email("Please enter a valid email address").max(254),
+  password: z.string().min(1, "Password is required"),
+  turnstileToken: z.string().optional(),
+});
 
 export async function POST(req: Request) {
   // Rate limit: max 5 signups per IP per 15 minutes
@@ -15,26 +26,35 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { name, email, password } = await req.json();
-
-    if (!name || !email || !password) {
+    const body = await req.json().catch(() => ({}));
+    const parsed = bodySchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Name, email, and password are required" },
+        { error: parsed.error.issues[0]?.message ?? "Invalid input" },
         { status: 400 }
       );
     }
 
-    if (password.length < 8) {
-      return NextResponse.json(
-        { error: "Password must be at least 8 characters" },
-        { status: 400 }
-      );
+    const { name, email, password, turnstileToken } = parsed.data;
+
+    // Cloudflare Turnstile (skipped if env not set)
+    const captcha = await verifyTurnstile(turnstileToken, ip);
+    if (!captcha.ok) {
+      return NextResponse.json({ error: captcha.error }, { status: 400 });
     }
+
+    // Strong password policy
+    const policy = validatePassword(password);
+    if (!policy.ok) {
+      return NextResponse.json({ error: policy.error }, { status: 400 });
+    }
+
+    // Normalise email — lower-case so case-mismatched logins still work
+    const normalisedEmail = email.trim().toLowerCase();
 
     const existingUser = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalisedEmail },
     });
-
     if (existingUser) {
       return NextResponse.json(
         { error: "An account with this email already exists" },
@@ -47,13 +67,19 @@ export async function POST(req: Request) {
     const user = await prisma.user.create({
       data: {
         name,
-        email,
+        email: normalisedEmail,
         password: hashedPassword,
         trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        // emailVerified intentionally null — verified via the link we send below
       },
     });
 
-    // Fire-and-forget: start email activation sequence
+    // Fire-and-forget: verification email + activation sequence.
+    // Verification email is independent of the A1 welcome (different purpose).
+    sendVerificationEmail({ to: normalisedEmail, name, userId: user.id }).catch(
+      (e) => console.error("[register] sendVerificationEmail failed:", e)
+    );
+
     import("@/lib/email-triggers").then(({ onUserSignup }) =>
       onUserSignup(user.id).catch((e) =>
         console.error("[register] onUserSignup failed:", e)
@@ -61,7 +87,10 @@ export async function POST(req: Request) {
     );
 
     return NextResponse.json(
-      { message: "Account created successfully", userId: user.id },
+      {
+        message: "Account created. Please check your email to verify.",
+        userId: user.id,
+      },
       { status: 201 }
     );
   } catch (error) {

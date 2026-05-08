@@ -9,12 +9,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, CheckCircle2 } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
+import { TurnstileWidget } from "@/components/turnstile-widget";
 import { toast } from "sonner";
+
+const TURNSTILE_SITEKEY = process.env.NEXT_PUBLIC_TURNSTILE_SITEKEY ?? "";
 
 export default function SignupPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -23,13 +27,19 @@ export default function SignupPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    if (TURNSTILE_SITEKEY && !turnstileToken) {
+      toast.error("Please complete the human-verification challenge.");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, turnstileToken }),
       });
 
       const data = await res.json();
@@ -39,6 +49,10 @@ export default function SignupPage() {
         return;
       }
 
+      toast.success(
+        "Account created. Please check your inbox to verify your email."
+      );
+
       // Auto sign-in after registration
       const signInResult = await signIn("credentials", {
         email: formData.email,
@@ -47,7 +61,6 @@ export default function SignupPage() {
       });
 
       if (signInResult?.error) {
-        toast.success("Account created! Please sign in.");
         router.push("/auth/login");
       } else {
         router.push("/dashboard");
@@ -196,19 +209,29 @@ export default function SignupPage() {
               <Input
                 id="password"
                 type="password"
-                placeholder="At least 8 characters"
+                placeholder="At least 10 characters with a number"
                 value={formData.password}
                 onChange={(e) => setFormData((f) => ({ ...f, password: e.target.value }))}
                 required
-                minLength={8}
+                minLength={10}
                 className="h-11 border-slate-300"
               />
+              <p className="text-xs text-slate-400">
+                Must be 10+ characters and include a letter and a number.
+              </p>
             </div>
+
+            {TURNSTILE_SITEKEY && (
+              <TurnstileWidget
+                sitekey={TURNSTILE_SITEKEY}
+                onToken={setTurnstileToken}
+              />
+            )}
 
             <Button
               type="submit"
               className="w-full h-11 bg-amber-500 hover:bg-amber-600 text-white mt-2"
-              disabled={isLoading}
+              disabled={isLoading || (Boolean(TURNSTILE_SITEKEY) && !turnstileToken)}
             >
               {isLoading ? (
                 <>
