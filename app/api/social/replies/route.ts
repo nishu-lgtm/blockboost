@@ -64,7 +64,7 @@ export async function POST(req: Request) {
       where: { id: session.user.id },
       select: { plan: true },
     });
-    if (!user || (user.plan !== "GROWTH" && user.plan !== "ENTERPRISE")) {
+    if (!user || !["GROWTH", "AGENCY", "ENTERPRISE"].includes(user.plan)) {
       return NextResponse.json(
         { error: "Social Listening requires Growth or Enterprise plan" },
         { status: 403 }
