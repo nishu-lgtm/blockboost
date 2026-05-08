@@ -229,7 +229,7 @@ export async function POST(req: Request) {
 
     // Check for existing brief for this exact prompt
     const existing = await prisma.contentBrief.findFirst({
-      where: { projectId, promptText: { equals: promptText } },
+      where: { projectId, promptText: { equals: promptText, mode: "insensitive" } },
       orderBy: { createdAt: "desc" },
     });
     if (existing && existing.status !== "PENDING" && existing.briefContent) {

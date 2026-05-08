@@ -1,9 +1,5 @@
 import { Suspense } from "react";
 import Topbar from "@/components/dashboard/topbar";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, Bell, Shield, CreditCard, Plug, Mail } from "lucide-react";
 import { auth } from "@/lib/auth";
@@ -12,6 +8,8 @@ import { IntegrationsTab } from "@/components/settings/integrations-tab";
 import { NotificationsTab } from "@/components/settings/notifications-tab";
 import { BillingTab } from "@/components/settings/billing-tab";
 import EmailPreferencesTab from "@/components/settings/email-preferences-tab";
+import { ProfileTab } from "@/components/settings/profile-tab";
+import { SecurityTab } from "@/components/settings/security-tab";
 
 export default async function SettingsPage({
   searchParams,
@@ -123,25 +121,10 @@ export default async function SettingsPage({
 
           {/* Profile */}
           <TabsContent value="profile">
-            <Card className="border-slate-200">
-              <CardHeader>
-                <CardTitle className="text-base">Profile Information</CardTitle>
-                <CardDescription>Update your name and email address.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label>Full name</Label>
-                    <Input defaultValue={session?.user?.name ?? ""} className="border-slate-300" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Email address</Label>
-                    <Input defaultValue={session?.user?.email ?? ""} type="email" className="border-slate-300" />
-                  </div>
-                </div>
-                <Button className="bg-indigo-600 hover:bg-indigo-700 text-white">Save changes</Button>
-              </CardContent>
-            </Card>
+            <ProfileTab
+              initialName={session?.user?.name ?? ""}
+              initialEmail={session?.user?.email ?? ""}
+            />
           </TabsContent>
 
           {/* Notifications */}
@@ -167,27 +150,7 @@ export default async function SettingsPage({
 
           {/* Security */}
           <TabsContent value="security">
-            <Card className="border-slate-200">
-              <CardHeader>
-                <CardTitle className="text-base">Security Settings</CardTitle>
-                <CardDescription>Manage your password and account security.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label>Current password</Label>
-                  <Input type="password" placeholder="••••••••" className="border-slate-300 max-w-sm" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>New password</Label>
-                  <Input type="password" placeholder="••••••••" className="border-slate-300 max-w-sm" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Confirm new password</Label>
-                  <Input type="password" placeholder="••••••••" className="border-slate-300 max-w-sm" />
-                </div>
-                <Button className="bg-indigo-600 hover:bg-indigo-700 text-white">Update password</Button>
-              </CardContent>
-            </Card>
+            <SecurityTab />
           </TabsContent>
 
           {/* Integrations */}

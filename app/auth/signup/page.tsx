@@ -228,11 +228,11 @@ export default function SignupPage() {
 
           <p className="mt-4 text-center text-xs text-slate-400">
             By creating an account, you agree to our{" "}
-            <Link href="#" className="text-indigo-600 hover:underline">
+            <Link href="/legal/terms" className="text-indigo-600 hover:underline">
               Terms of Service
             </Link>{" "}
             and{" "}
-            <Link href="#" className="text-indigo-600 hover:underline">
+            <Link href="/legal/privacy" className="text-indigo-600 hover:underline">
               Privacy Policy
             </Link>
             .

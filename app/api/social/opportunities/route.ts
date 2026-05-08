@@ -28,6 +28,18 @@ export async function GET(req: Request) {
 
   const { projectId, platform, status, minScore, sort, page, limit } = parsed.data;
 
+  // Plan gating — Growth+ only (matches scan & replies endpoints)
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { plan: true },
+  });
+  if (!user || !["GROWTH", "AGENCY", "ENTERPRISE"].includes(user.plan)) {
+    return NextResponse.json(
+      { error: "Social Listening requires Growth or Enterprise plan" },
+      { status: 403 }
+    );
+  }
+
   // Verify project belongs to user
   const project = await prisma.project.findFirst({
     where: { id: projectId, userId: session.user.id },

@@ -48,6 +48,8 @@ export async function POST(req: Request) {
         project: {
           select: {
             brandName: true,
+            businessCategory: true,
+            city: true,
             prompts: { select: { text: true }, take: 5 },
           },
         },
@@ -71,6 +73,8 @@ export async function POST(req: Request) {
 
     const project = opp.project as {
       brandName: string;
+      businessCategory: string | null;
+      city: string | null;
       prompts: { text: string }[];
     };
 
@@ -81,8 +85,8 @@ export async function POST(req: Request) {
       postBody: opp.body,
       subreddit: opp.subreddit,
       brandName: project.brandName,
-      city: "", // Loaded from project (extend as needed)
-      businessCategory: "local business",
+      city: project.city ?? "",
+      businessCategory: project.businessCategory ?? "local business",
       keyServices: project.prompts.map((p) => p.text).slice(0, 3),
     });
 

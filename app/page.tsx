@@ -27,7 +27,6 @@ const NAV_LINKS = [
   { label: "Product", href: "#features" },
   { label: "Pricing", href: "#pricing" },
   { label: "FAQ", href: "#faq" },
-  { label: "Blog", href: "#" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -427,7 +426,7 @@ export default function HomePage() {
               ].map(({ Icon, svg, label }, i) => (
                 <a
                   key={i}
-                  href="#"
+                  href="mailto:hello@blockboost.co"
                   aria-label={label}
                   className="w-8 h-8 bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
                 >
@@ -443,10 +442,14 @@ export default function HomePage() {
               Product
             </p>
             <ul className="space-y-3">
-              {["Features", "Pricing", "FAQ"].map((l) => (
-                <li key={l}>
-                  <a href="#" className="text-sm text-gray-400 hover:text-white transition-colors">
-                    {l}
+              {[
+                { label: "Features", href: "#features" },
+                { label: "Pricing", href: "#pricing" },
+                { label: "FAQ", href: "#faq" },
+              ].map((l) => (
+                <li key={l.label}>
+                  <a href={l.href} className="text-sm text-gray-400 hover:text-white transition-colors">
+                    {l.label}
                   </a>
                 </li>
               ))}
@@ -459,13 +462,11 @@ export default function HomePage() {
               Company
             </p>
             <ul className="space-y-3">
-              {["About", "Blog", "Careers", "Press", "Contact"].map((l) => (
-                <li key={l}>
-                  <a href="#" className="text-sm text-gray-400 hover:text-white transition-colors">
-                    {l}
-                  </a>
-                </li>
-              ))}
+              <li>
+                <a href="mailto:hello@blockboost.co" className="text-sm text-gray-400 hover:text-white transition-colors">
+                  Contact
+                </a>
+              </li>
             </ul>
           </div>
 
@@ -475,13 +476,16 @@ export default function HomePage() {
               Legal
             </p>
             <ul className="space-y-3">
-              {["Privacy Policy", "Terms of Service", "Cookie Policy", "GDPR"].map((l) => (
-                <li key={l}>
-                  <a href="#" className="text-sm text-gray-400 hover:text-white transition-colors">
-                    {l}
-                  </a>
-                </li>
-              ))}
+              <li>
+                <a href="/legal/privacy" className="text-sm text-gray-400 hover:text-white transition-colors">
+                  Privacy Policy
+                </a>
+              </li>
+              <li>
+                <a href="/legal/terms" className="text-sm text-gray-400 hover:text-white transition-colors">
+                  Terms of Service
+                </a>
+              </li>
             </ul>
           </div>
         </div>

@@ -34,6 +34,7 @@ export function NotificationsTab({
   const [slackConnected, setSlackConnected] = useState(initialSlackConnected);
   const [savingEmail, setSavingEmail] = useState(false);
   const [disconnectingSlack, setDisconnectingSlack] = useState(false);
+  const [sendingSlackTest, setSendingSlackTest] = useState(false);
 
   // Handle Slack OAuth callback param
   useEffect(() => {
@@ -76,6 +77,22 @@ export function NotificationsTab({
       toast.error("Failed to disconnect Slack");
     } finally {
       setDisconnectingSlack(false);
+    }
+  }
+
+  async function sendTestSlackMessage() {
+    setSendingSlackTest(true);
+    try {
+      const res = await fetch("/api/slack/test", { method: "POST" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? "Failed to send test message");
+      }
+      toast.success("Test message sent — check your Slack channel");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to send test message");
+    } finally {
+      setSendingSlackTest(false);
     }
   }
 
@@ -171,7 +188,19 @@ export function NotificationsTab({
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+                  onClick={sendTestSlackMessage}
+                  disabled={sendingSlackTest}
+                >
+                  {sendingSlackTest ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                  ) : null}
+                  Send test message
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"

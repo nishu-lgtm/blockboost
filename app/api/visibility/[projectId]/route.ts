@@ -141,7 +141,7 @@ export async function GET(
         orderBy: { createdAt: "asc" },
       }),
       prisma.citation.count({
-        where: { projectId, isOwned: true },
+        where: { projectId },
       }),
     ]);
 
