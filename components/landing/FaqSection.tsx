@@ -22,7 +22,7 @@ const FAQS = [
   },
   {
     q: "Which AI platforms do you track?",
-    a: "We track ChatGPT, Google AI Overviews, Perplexity, Microsoft Copilot, and Gemini — the five platforms your customers use most. We're adding more regularly.",
+    a: "We currently track ChatGPT, Perplexity, and Google AI Overviews — the three platforms most relied on for local recommendations. Microsoft Copilot, Gemini, and others are on the roadmap.",
   },
   {
     q: "Can I cancel anytime?",

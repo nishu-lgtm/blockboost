@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { BarChart3, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { Suspense } from "react";
+import { BrandLogo } from "@/components/brand-logo";
 
 function ErrorContent() {
   const searchParams = useSearchParams();
@@ -22,11 +23,8 @@ function ErrorContent() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-8">
       <div className="text-center max-w-md">
-        <Link href="/" className="flex items-center gap-2 justify-center mb-10">
-          <div className="flex items-center justify-center w-8 h-8 bg-indigo-600 rounded-lg">
-            <BarChart3 className="h-5 w-5 text-white" />
-          </div>
-          <span className="text-xl font-bold text-slate-900">BlockBoost</span>
+        <Link href="/" className="inline-block mb-10">
+          <BrandLogo size="lg" />
         </Link>
 
         <div className="flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mx-auto mb-6">
@@ -38,7 +36,7 @@ function ErrorContent() {
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link href="/auth/login">
-            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white">
+            <Button className="bg-amber-500 hover:bg-amber-600 text-white">
               Try signing in again
             </Button>
           </Link>

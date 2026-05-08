@@ -135,7 +135,8 @@ export default function AuditPage() {
   useEffect(() => {
     fetch("/api/projects/list")
       .then((r) => r.json())
-      .then((list: Array<{ id: string; brandName: string }>) => {
+      .then((data: { projects?: Array<{ id: string; brandName: string }> }) => {
+        const list = data.projects ?? [];
         if (list.length > 0) {
           setProjectId(list[0].id);
           setBrandName(list[0].brandName);

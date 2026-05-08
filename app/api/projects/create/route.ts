@@ -77,7 +77,9 @@ export async function POST(req: Request) {
         await tx.competitor.createMany({
           data: validCompetitors.map((c) => ({
             brandName: c.brandName.trim(),
-            websiteUrl: c.websiteUrl?.trim() || "https://example.com",
+            // Store actual URL or null — never a fake placeholder, which would
+            // poison citation domain matching downstream.
+            websiteUrl: c.websiteUrl?.trim() || null,
             projectId: project.id,
           })),
         });

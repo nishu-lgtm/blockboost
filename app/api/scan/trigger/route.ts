@@ -3,6 +3,10 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { runScan, platformsForPlan } from "@/lib/scan-engine";
 
+// Allow up to 5 minutes if the scan is forced synchronous (Pro plan only).
+// In async mode (the default) the request returns in <1s.
+export const maxDuration = 300;
+
 export async function POST(req: Request) {
   try {
     const session = await auth();
@@ -28,39 +32,42 @@ export async function POST(req: Request) {
 
     const plan = project.user.plan;
     const enabledPlatforms = platformsForPlan(plan);
+    const userId = session.user.id;
 
     console.log(
-      `[scan/trigger] Scan triggered for project ${projectId} (${project.brandName}) ` +
+      `[scan/trigger] Scan queued for project ${projectId} (${project.brandName}) ` +
         `plan=${plan} platforms=${enabledPlatforms.join(",")}`
     );
 
-    // Run the scan synchronously.
-    // In production you would enqueue this as a background job (Inngest, Trigger.dev, etc.)
-    // and return 202 immediately.  For the current architecture we run inline and return
-    // the summary so the onboarding UI can show immediate feedback.
-    const summary = await runScan(projectId, plan);
-
-    // Fire email trigger for first scan completion (fire-and-forget)
-    const userId = session.user?.id;
-    if (userId) {
-      const mentionRate = summary.mentionRate ?? 0;
-      const topOpportunity = "Improve your AI visibility score";
-      import("@/lib/email-triggers").then(({ onFirstScanComplete }) =>
-        onFirstScanComplete(userId, mentionRate, topOpportunity).catch(
-          (e) => console.error("[scan/trigger] onFirstScanComplete failed:", e)
-        )
+    // ASYNC: dispatch the scan in the background and return 202 immediately.
+    // Apify scrapers can take minutes; awaiting here would time out at the
+    // Vercel serverless function limit. The client polls /api/scan/status
+    // for completion. Errors are logged; the user sees the status flip in
+    // the UI when the scan finishes.
+    void runScan(projectId, plan)
+      .then((summary) => {
+        const mentionRate = summary.mentionRate ?? 0;
+        const topOpportunity = "Improve your AI visibility score";
+        return import("@/lib/email-triggers").then(({ onFirstScanComplete }) =>
+          onFirstScanComplete(userId, mentionRate, topOpportunity).catch((e) =>
+            console.error("[scan/trigger] onFirstScanComplete failed:", e)
+          )
+        );
+      })
+      .catch((err) =>
+        console.error(`[scan/trigger] Background scan failed for ${projectId}:`, err)
       );
-    }
 
     return NextResponse.json(
       {
         success: true,
+        queued: true,
         projectId,
         plan,
         platforms: enabledPlatforms,
-        summary,
+        message: "Scan started — results typically ready in 2-5 minutes.",
       },
-      { status: 200 }
+      { status: 202 }
     );
   } catch (error) {
     console.error("Scan trigger error:", error);

@@ -3,7 +3,8 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { BarChart3, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { BrandLogo } from "@/components/brand-logo";
 import { Progress } from "@/components/ui/progress";
 import StepProjectBasics from "@/components/onboarding/step-project-basics";
 import StepPrompts from "@/components/onboarding/step-prompts";
@@ -121,12 +122,7 @@ function OnboardingContent() {
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Header */}
       <header className="bg-white border-b border-slate-200 px-6 h-16 flex items-center shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="flex items-center justify-center w-8 h-8 bg-indigo-600 rounded-lg">
-            <BarChart3 className="h-5 w-5 text-white" />
-          </div>
-          <span className="text-lg font-bold text-slate-900">BlockBoost</span>
-        </div>
+        <BrandLogo size="md" />
         <span className="ml-4 text-sm text-slate-400">Set up your first project</span>
       </header>
 

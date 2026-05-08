@@ -80,7 +80,8 @@ export default function ContentBriefsPage() {
   useEffect(() => {
     fetch("/api/projects/list")
       .then((r) => r.json())
-      .then((list: ProjectSummary[]) => {
+      .then((data: { projects?: ProjectSummary[] }) => {
+        const list = data.projects ?? [];
         setProjects(list);
         if (list.length > 0) setSelectedProject(list[0]);
       })

@@ -7,8 +7,9 @@ import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { BarChart3, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { BrandLogo } from "@/components/brand-logo";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -53,12 +54,9 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex">
       {/* Left panel */}
-      <div className="hidden lg:flex w-1/2 bg-indigo-600 flex-col justify-between p-12">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="flex items-center justify-center w-8 h-8 bg-white/20 rounded-lg">
-            <BarChart3 className="h-5 w-5 text-white" />
-          </div>
-          <span className="text-xl font-bold text-white">BlockBoost</span>
+      <div className="hidden lg:flex w-1/2 bg-slate-900 flex-col justify-between p-12">
+        <Link href="/">
+          <BrandLogo variant="dark" size="lg" />
         </Link>
 
         <div>
@@ -69,12 +67,12 @@ export default function LoginPage() {
             </p>
             <footer>
               <p className="font-semibold">Sarah Chen</p>
-              <p className="text-indigo-200 text-sm">Head of Marketing, NexaCloud</p>
+              <p className="text-amber-200 text-sm">Head of Marketing, NexaCloud</p>
             </footer>
           </blockquote>
         </div>
 
-        <div className="flex items-center gap-4 text-indigo-200 text-sm">
+        <div className="flex items-center gap-4 text-amber-200 text-sm">
           <span>500+ brands trust BlockBoost</span>
           <span>·</span>
           <span>SOC 2 Type II certified</span>
@@ -84,11 +82,8 @@ export default function LoginPage() {
       {/* Right panel */}
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
-          <div className="lg:hidden flex items-center gap-2 mb-8">
-            <div className="flex items-center justify-center w-8 h-8 bg-indigo-600 rounded-lg">
-              <BarChart3 className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-xl font-bold text-slate-900">BlockBoost</span>
+          <div className="lg:hidden mb-8">
+            <BrandLogo size="lg" />
           </div>
 
           <div className="mb-8">
@@ -159,7 +154,7 @@ export default function LoginPage() {
                 </Label>
                 <Link
                   href="/auth/forgot-password"
-                  className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+                  className="text-xs text-amber-600 hover:text-amber-700 font-medium"
                 >
                   Forgot password?
                 </Link>
@@ -177,7 +172,7 @@ export default function LoginPage() {
 
             <Button
               type="submit"
-              className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white mt-2"
+              className="w-full h-11 bg-amber-500 hover:bg-amber-600 text-white mt-2"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -193,7 +188,7 @@ export default function LoginPage() {
 
           <p className="mt-6 text-center text-sm text-slate-500">
             Don&apos;t have an account?{" "}
-            <Link href="/auth/signup" className="text-indigo-600 font-medium hover:text-indigo-700">
+            <Link href="/auth/signup" className="text-amber-600 font-medium hover:text-amber-700">
               Start your free trial
             </Link>
           </p>

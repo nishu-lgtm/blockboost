@@ -126,6 +126,10 @@ model User {
   totpEnabled          Boolean    @default(false)
   trialEndsAt          DateTime?
 
+  // Set every time the password changes. Used to invalidate any reset tokens
+  // issued before this timestamp — see app/api/auth/reset-password/route.ts.
+  passwordChangedAt    DateTime?
+
   // Subscription pause
   pausedAt             DateTime?
   pauseUntil           DateTime?
@@ -216,7 +220,7 @@ model Project {
 model Competitor {
   id         String   @id @default(cuid())
   brandName  String
-  websiteUrl String
+  websiteUrl String?
   projectId  String
   createdAt  DateTime @default(now())
 

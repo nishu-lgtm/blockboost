@@ -234,7 +234,7 @@ export function FeatureTabs() {
             ))}
           </ul>
           <a
-            href="/auth/register"
+            href="/auth/signup"
             className="inline-flex items-center gap-2 text-amber-600 font-semibold hover:text-amber-700 transition-colors"
           >
             Try it free →

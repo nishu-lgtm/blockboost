@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import {
-  BarChart3,
   LayoutDashboard,
   Eye,
   Quote,
@@ -24,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSession } from "next-auth/react";
 import { useEffect, useState, useRef } from "react";
+import { BrandLogo } from "@/components/brand-logo";
 
 const navItems = [
   {
@@ -141,11 +141,8 @@ export default function Sidebar() {
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-slate-200 flex flex-col z-40">
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-6 h-16 border-b border-slate-100">
-        <div className="flex items-center justify-center w-8 h-8 bg-indigo-600 rounded-lg shrink-0">
-          <BarChart3 className="h-5 w-5 text-white" />
-        </div>
-        <span className="text-lg font-bold text-slate-900">BlockBoost</span>
+      <div className="flex items-center px-6 h-16 border-b border-slate-100">
+        <BrandLogo size="md" />
       </div>
 
       {/* Project selector */}

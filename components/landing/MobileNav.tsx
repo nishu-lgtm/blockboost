@@ -66,7 +66,7 @@ export function MobileNav() {
               Log in
             </Link>
             <Link
-              href="/auth/register"
+              href="/auth/signup"
               onClick={() => setOpen(false)}
               className="w-full text-center py-3 font-bold text-white bg-amber-500 hover:bg-amber-600 rounded-xl transition-colors"
             >

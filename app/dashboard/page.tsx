@@ -93,7 +93,7 @@ function EmptyState({ userName }: { userName?: string }) {
         </p>
         <p className="text-slate-400 mb-8 text-sm leading-relaxed">
           Add your first project to start monitoring how often your brand appears
-          in AI responses across ChatGPT, Claude, Gemini, and more.
+          in AI responses across ChatGPT, Perplexity, and Google AI Overviews.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center mb-10">
@@ -103,10 +103,7 @@ function EmptyState({ userName }: { userName?: string }) {
               Add your first project
             </Button>
           </Link>
-          <Button variant="outline" className="h-11 px-6 border-slate-300">
-            Watch 2-min tutorial
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
+          {/* Tutorial button hidden until video is recorded */}
         </div>
 
         <div className="bg-white border border-slate-200 rounded-2xl p-6 text-left">
@@ -116,7 +113,7 @@ function EmptyState({ userName }: { userName?: string }) {
           <div className="space-y-4">
             {[
               { step: "1", title: "Add your project", desc: "Enter your brand name and domain to start tracking", icon: Globe },
-              { step: "2", title: "Choose AI models to monitor", desc: "Select ChatGPT, Claude, Gemini, and more", icon: Brain },
+              { step: "2", title: "Choose AI models to monitor", desc: "Select ChatGPT, Perplexity, and Google AI Overviews", icon: Brain },
               { step: "3", title: "Add competitors", desc: "Track how you compare against key rivals", icon: Users2 },
             ].map((item) => (
               <div key={item.step} className="flex items-start gap-4">

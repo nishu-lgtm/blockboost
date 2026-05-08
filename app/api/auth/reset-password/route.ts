@@ -58,16 +58,28 @@ export async function POST(req: Request) {
 
   const user = await prisma.user.findUnique({
     where: { id: verified.userId },
-    select: { id: true },
+    select: { id: true, passwordChangedAt: true },
   });
   if (!user) {
     return NextResponse.json({ error: "Invalid token" }, { status: 400 });
   }
 
+  // Reject tokens issued before the user's last password change.
+  // This invalidates a reset token after it's been used once (because
+  // the password change updates passwordChangedAt to "now"), and also
+  // invalidates any other tokens that were issued for this user.
+  const tokenTs = Number(token.split(".")[1]);
+  if (user.passwordChangedAt && tokenTs <= user.passwordChangedAt.getTime()) {
+    return NextResponse.json(
+      { error: "Reset link has already been used" },
+      { status: 400 }
+    );
+  }
+
   const newHash = await bcrypt.hash(newPassword, 12);
   await prisma.user.update({
     where: { id: user.id },
-    data: { password: newHash },
+    data: { password: newHash, passwordChangedAt: new Date() },
   });
 
   return NextResponse.json({ ok: true });

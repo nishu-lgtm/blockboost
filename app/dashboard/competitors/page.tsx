@@ -67,7 +67,8 @@ export default function CompetitorsPage() {
   useEffect(() => {
     fetch("/api/projects/list")
       .then((r) => r.json())
-      .then((list: Array<{ id: string }>) => {
+      .then((data: { projects?: Array<{ id: string }> }) => {
+        const list = data.projects ?? [];
         if (list.length > 0) setProjectId(list[0].id);
       })
       .catch(() => {});

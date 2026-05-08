@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BarChart3 } from "lucide-react";
+import { BrandLogo } from "@/components/brand-logo";
 
 export const metadata = {
   title: "Privacy Policy — BlockBoost",
@@ -10,13 +10,10 @@ export default function PrivacyPage() {
     <div className="min-h-screen bg-slate-50">
       <header className="border-b border-slate-200 bg-white">
         <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-              <BarChart3 className="h-5 w-5 text-white" />
-            </div>
-            <span className="font-bold text-lg text-slate-900">BlockBoost</span>
+          <Link href="/">
+            <BrandLogo size="md" />
           </Link>
-          <Link href="/auth/login" className="text-sm font-medium text-slate-600 hover:text-indigo-600">
+          <Link href="/auth/login" className="text-sm font-medium text-slate-600 hover:text-amber-600">
             Sign in
           </Link>
         </div>

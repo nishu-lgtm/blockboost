@@ -20,8 +20,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) {
+          return null;
+        }
+
+        // Rate limit: 10 failed attempts per IP+email per 15 min.
+        // Throws on the 11th — NextAuth will surface this as a sign-in error.
+        const { rateLimit, clientIp } = await import("@/lib/rate-limit");
+        const ip =
+          req && "headers" in req && req.headers
+            ? clientIp(req as unknown as Request)
+            : "unknown";
+        const email = String(credentials.email).toLowerCase();
+        const limited = rateLimit(`login:${ip}:${email}`, 10, 15 * 60 * 1000);
+        if (!limited.ok) {
+          console.warn(`[auth] Rate-limited login attempt ip=${ip} email=${email}`);
+          // Returning null gives a generic "invalid credentials" — better
+          // than throwing because we don't want to leak that an account exists.
           return null;
         }
 

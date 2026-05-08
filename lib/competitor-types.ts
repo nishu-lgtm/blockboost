@@ -3,7 +3,7 @@
 export interface CompetitorInfo {
   id: string;
   brandName: string;
-  websiteUrl: string;
+  websiteUrl: string | null;
 }
 
 // Share of Voice per platform

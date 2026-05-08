@@ -7,7 +7,8 @@ import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { BarChart3, Loader2, CheckCircle2 } from "lucide-react";
+import { Loader2, CheckCircle2 } from "lucide-react";
+import { BrandLogo } from "@/components/brand-logo";
 import { toast } from "sonner";
 
 export default function SignupPage() {
@@ -73,11 +74,8 @@ export default function SignupPage() {
     <div className="min-h-screen flex">
       {/* Left panel */}
       <div className="hidden lg:flex w-1/2 bg-slate-900 flex-col justify-between p-12">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="flex items-center justify-center w-8 h-8 bg-indigo-600 rounded-lg">
-            <BarChart3 className="h-5 w-5 text-white" />
-          </div>
-          <span className="text-xl font-bold text-white">BlockBoost</span>
+        <Link href="/">
+          <BrandLogo variant="dark" size="lg" />
         </Link>
 
         <div>
@@ -86,13 +84,13 @@ export default function SignupPage() {
           </h2>
           <ul className="space-y-4">
             {[
-              "Monitor 6+ AI models including ChatGPT & Claude",
+              "Monitor ChatGPT, Perplexity & Google AI Overviews",
               "Track citations and AI share of voice",
               "Get content briefs to improve your AI visibility",
               "Set up in under 5 minutes",
             ].map((item) => (
               <li key={item} className="flex items-center gap-3 text-slate-300">
-                <CheckCircle2 className="h-5 w-5 text-indigo-400 shrink-0" />
+                <CheckCircle2 className="h-5 w-5 text-amber-400 shrink-0" />
                 <span>{item}</span>
               </li>
             ))}
@@ -111,11 +109,8 @@ export default function SignupPage() {
       {/* Right panel */}
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
-          <div className="lg:hidden flex items-center gap-2 mb-8">
-            <div className="flex items-center justify-center w-8 h-8 bg-indigo-600 rounded-lg">
-              <BarChart3 className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-xl font-bold text-slate-900">BlockBoost</span>
+          <div className="lg:hidden mb-8">
+            <BrandLogo size="lg" />
           </div>
 
           <div className="mb-8">
@@ -212,7 +207,7 @@ export default function SignupPage() {
 
             <Button
               type="submit"
-              className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white mt-2"
+              className="w-full h-11 bg-amber-500 hover:bg-amber-600 text-white mt-2"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -240,7 +235,7 @@ export default function SignupPage() {
 
           <p className="mt-4 text-center text-sm text-slate-500">
             Already have an account?{" "}
-            <Link href="/auth/login" className="text-indigo-600 font-medium hover:text-indigo-700">
+            <Link href="/auth/login" className="text-amber-600 font-medium hover:text-amber-700">
               Sign in
             </Link>
           </p>

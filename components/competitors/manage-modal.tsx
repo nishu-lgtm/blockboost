@@ -48,7 +48,7 @@ export function ManageCompetitorsModal({
     if (open) {
       setRows(
         competitors.length > 0
-          ? competitors.map((c) => ({ key: c.id, brandName: c.brandName, websiteUrl: c.websiteUrl }))
+          ? competitors.map((c) => ({ key: c.id, brandName: c.brandName, websiteUrl: c.websiteUrl ?? "" }))
           : [{ key: crypto.randomUUID(), brandName: "", websiteUrl: "" }]
       );
       setError(null);

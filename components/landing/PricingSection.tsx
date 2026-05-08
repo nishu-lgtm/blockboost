@@ -32,7 +32,7 @@ const PLANS = [
     highlight: true,
     badge: "Most Popular",
     features: [
-      "6 AI platforms tracked",
+      "All 3 AI platforms (more coming)",
       "500 prompts per month",
       "5 competitors",
       "Everything in Starter",
@@ -146,7 +146,7 @@ export function PricingSection() {
               </div>
 
               <Link
-                href="/auth/register"
+                href="/auth/signup"
                 className={`w-full block text-center py-3 rounded-xl font-bold text-sm transition-colors mb-8 ${
                   plan.highlight
                     ? "bg-white text-amber-600 hover:bg-amber-50"
@@ -181,9 +181,12 @@ export function PricingSection() {
           </p>
           <p className="text-gray-400 text-sm">
             Questions about pricing?{" "}
-            <button className="text-amber-600 font-semibold hover:underline">
-              Chat with us →
-            </button>
+            <a
+              href="mailto:hello@blockboost.co?subject=Pricing%20question"
+              className="text-amber-600 font-semibold hover:underline"
+            >
+              Email us →
+            </a>
           </p>
         </div>
       </div>
