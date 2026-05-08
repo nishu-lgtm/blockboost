@@ -49,31 +49,53 @@ export const GET = adminRoute("VIEWER", async () => {
         select: { createdAt: true },
       });
       const status = count > 0 ? "healthy" : lastMention ? "degraded" : "unknown";
+
+      // Real success rate: ratio of mentions vs total prompts × scans expected.
+      // Approximation: if we have any mentions in 7d we report "healthy"; otherwise unknown.
+      // Without per-scrape success/failure logs we can't compute a true rate, so
+      // we expose `mentionsLast7d` as the honest signal and only show a derived %
+      // when there's at least 1 successful mention.
+      const successRate = count > 0 ? 100 : 0;
+
       return {
         platform: platformLabels[p],
         key: p,
         status,
         lastSuccess: lastMention?.createdAt ?? null,
         mentionsLast7d: count,
-        successRate: count > 0 ? Math.min(98, 80 + Math.floor(Math.random() * 18)) : 0,
+        successRate,
       };
     }),
   );
 
-  // Cron job history — inferred from audit log
+  // Cron job history — read from real CronRun table
   const cronJobs = [
-    { name: "daily-scan", cron: "0 6 * * *" },
-    { name: "weekly-report", cron: "0 8 * * 1" },
+    { name: "daily-scan", cron: "0 6 * * *", intervalMs: 24 * 60 * 60 * 1000 },
+    { name: "weekly-report", cron: "0 8 * * 1", intervalMs: 7 * 24 * 60 * 60 * 1000 },
+    { name: "email-sequence", cron: "0 9 * * *", intervalMs: 24 * 60 * 60 * 1000 },
+    { name: "resume-paused", cron: "0 7 * * *", intervalMs: 24 * 60 * 60 * 1000 },
   ];
 
-  const cronHistory = cronJobs.map((job) => ({
-    name: job.name,
-    cron: job.cron,
-    lastRun: subHours(now, Math.floor(Math.random() * 12)),
-    duration: Math.floor(Math.random() * 180) + 30,
-    status: "success" as const,
-    nextRun: new Date(now.getTime() + Math.random() * 86400000),
-  }));
+  const cronHistory = await Promise.all(
+    cronJobs.map(async (job) => {
+      const last = await prisma.cronRun.findFirst({
+        where: { name: job.name },
+        orderBy: { startedAt: "desc" },
+        select: { startedAt: true, finishedAt: true, durationMs: true, status: true, error: true },
+      });
+      return {
+        name: job.name,
+        cron: job.cron,
+        lastRun: last?.startedAt ?? null,
+        duration: last?.durationMs ? Math.round(last.durationMs / 1000) : null,
+        status: (last?.status ?? "unknown") as "running" | "success" | "error" | "unknown",
+        error: last?.error ?? null,
+        nextRun: last?.startedAt
+          ? new Date(last.startedAt.getTime() + job.intervalMs)
+          : null,
+      };
+    })
+  );
 
   // Scans per day last 7 days
   const scansByDay = await Promise.all(

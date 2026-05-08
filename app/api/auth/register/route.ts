@@ -1,8 +1,19 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
+  // Rate limit: max 5 signups per IP per 15 minutes
+  const ip = clientIp(req);
+  const limited = rateLimit(`register:${ip}`, 5, 15 * 60 * 1000);
+  if (!limited.ok) {
+    return NextResponse.json(
+      { error: `Too many signup attempts. Try again in ${limited.retryAfter}s.` },
+      { status: 429, headers: { "Retry-After": String(limited.retryAfter) } }
+    );
+  }
+
   try {
     const { name, email, password } = await req.json();
 

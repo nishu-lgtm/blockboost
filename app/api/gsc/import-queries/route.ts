@@ -165,39 +165,53 @@ export async function POST(req: Request) {
       }
 
       const now = new Date();
+
+      // Pre-fetch all existing prompts for this project once instead of N findFirst queries.
+      const existing = await prisma.prompt.findMany({
+        where: { projectId },
+        select: { id: true, text: true },
+      });
+      const existingByText = new Map(existing.map((p) => [p.text.toLowerCase(), p.id]));
+
       let importedCount = 0;
+      const tasks: Promise<unknown>[] = [];
 
       for (const q of enriched) {
-        const existing = await prisma.prompt.findFirst({
-          where: { projectId, text: q.text },
-        });
-
-        if (existing) {
-          // Update GSC metadata
-          await prisma.prompt.update({
-            where: { id: existing.id },
-            data: {
-              gscImpressions: q.impressions,
-              gscClicks: q.clicks,
-              gscPosition: q.position,
-              gscLastSync: now,
-            },
-          });
+        const existingId = existingByText.get(q.text.toLowerCase());
+        if (existingId) {
+          tasks.push(
+            prisma.prompt.update({
+              where: { id: existingId },
+              data: {
+                gscImpressions: q.impressions,
+                gscClicks: q.clicks,
+                gscPosition: q.position,
+                gscLastSync: now,
+              },
+            })
+          );
         } else {
-          // Create new prompt
-          await prisma.prompt.create({
-            data: {
-              projectId,
-              text: q.text,
-              category: q.category,
-              gscImpressions: q.impressions,
-              gscClicks: q.clicks,
-              gscPosition: q.position,
-              gscLastSync: now,
-            },
-          });
           importedCount++;
+          tasks.push(
+            prisma.prompt.create({
+              data: {
+                projectId,
+                text: q.text,
+                category: q.category,
+                gscImpressions: q.impressions,
+                gscClicks: q.clicks,
+                gscPosition: q.position,
+                gscLastSync: now,
+              },
+            })
+          );
         }
+      }
+
+      // Run writes in chunks of 20 in parallel (avoids hammering DB connection pool)
+      const CHUNK = 20;
+      for (let i = 0; i < tasks.length; i += CHUNK) {
+        await Promise.all(tasks.slice(i, i + CHUNK));
       }
 
       return NextResponse.json({

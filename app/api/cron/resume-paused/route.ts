@@ -17,6 +17,39 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const cronRun = await prisma.cronRun.create({
+    data: { name: "resume-paused", status: "running" },
+  });
+  const startMs = cronRun.startedAt.getTime();
+
+  try {
+    const result = await runResumePaused();
+    await prisma.cronRun.update({
+      where: { id: cronRun.id },
+      data: {
+        status: "success",
+        finishedAt: new Date(),
+        durationMs: Date.now() - startMs,
+        metadata: result as unknown as object,
+      },
+    });
+    return NextResponse.json(result);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    await prisma.cronRun.update({
+      where: { id: cronRun.id },
+      data: {
+        status: "error",
+        finishedAt: new Date(),
+        durationMs: Date.now() - startMs,
+        error: message.slice(0, 2000),
+      },
+    });
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+async function runResumePaused() {
   const now = new Date();
 
   // Find paused users whose pause period has ended
@@ -69,13 +102,16 @@ export async function GET(req: Request) {
   }
 
   // Win-back Day 30 emails
+  // FIX #30: Was using a ±1h window — if the cron ever missed a day, those users
+  // would never get the email. Now we use `lte: thirtyDaysAgo` and dedupe via the
+  // `winback30SentAt` flag on CancellationRecord (added in this fix).
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-  const thirtyDayWindow = new Date(thirtyDaysAgo.getTime() - 60 * 60 * 1000); // ±1 hour window
 
   const day30Users = await prisma.cancellationRecord.findMany({
     where: {
       cancelled: true,
-      createdAt: { gte: thirtyDayWindow, lte: thirtyDaysAgo },
+      createdAt: { lte: thirtyDaysAgo },
+      winback30SentAt: null,
     },
     include: { user: { select: { email: true, name: true } } },
     distinct: ["userId"],
@@ -89,20 +125,24 @@ export async function GET(req: Request) {
         type: "winback_day30",
         data: { reason: record.reason },
       });
+      await prisma.cancellationRecord.update({
+        where: { id: record.id },
+        data: { winback30SentAt: new Date() },
+      });
     } catch (err) {
       console.error(`[resume-paused] Day30 winback failed for ${record.userId}:`, err);
     }
   }
 
-  // Win-back Day 90 emails (with 40% off coupon)
+  // Win-back Day 90 emails (with 40% off coupon) — same dedupe pattern via winback90SentAt
   const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-  const ninetyDayWindow = new Date(ninetyDaysAgo.getTime() - 60 * 60 * 1000);
 
   const day90Users = await prisma.cancellationRecord.findMany({
     where: {
       cancelled: true,
       wantWinback: true,
-      createdAt: { gte: ninetyDayWindow, lte: ninetyDaysAgo },
+      createdAt: { lte: ninetyDaysAgo },
+      winback90SentAt: null,
     },
     include: { user: { select: { email: true, name: true, stripeCustomerId: true } } },
     distinct: ["userId"],
@@ -133,15 +173,18 @@ export async function GET(req: Request) {
           expiresDate: format(new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000), "MMMM d, yyyy"),
         },
       });
+      await prisma.cancellationRecord.update({
+        where: { id: record.id },
+        data: { winback90SentAt: new Date() },
+      });
     } catch (err) {
       console.error(`[resume-paused] Day90 winback failed for ${record.userId}:`, err);
     }
   }
 
-  return NextResponse.json({
-    ok: true,
+  return {
     resumed,
     winback30Sent: day30Users.length,
     winback90Sent: day90Users.length,
-  });
+  };
 }

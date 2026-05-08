@@ -8,6 +8,7 @@
 
 import { NextResponse } from "next/server";
 import { runDailyScansForAllProjects } from "@/lib/scheduler";
+import { runWithCronTracking } from "@/lib/cron-runner";
 
 export const maxDuration = 300; // allow up to 5 minutes for Vercel Pro
 
@@ -28,7 +29,9 @@ export async function GET(req: Request) {
   console.log("[cron/daily-scan] Starting daily scan job…");
 
   try {
-    const report = await runDailyScansForAllProjects();
+    const report = await runWithCronTracking("daily-scan", () =>
+      runDailyScansForAllProjects()
+    );
     return NextResponse.json({ ok: true, report });
   } catch (err) {
     console.error("[cron/daily-scan] Fatal error:", err);

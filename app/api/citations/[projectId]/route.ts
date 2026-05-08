@@ -284,13 +284,31 @@ export async function GET(
       .sort((a, b) => a.platform.localeCompare(b.platform));
 
     // ── Hallucination check ──────────────────────────────────────────────
-    // Sample up to 5 mention response texts that reference the brand
-    const mentionTexts = await prisma.mention.findMany({
-      where: { projectId, brandMentioned: true, createdAt: { gte: since } },
-      select: { responseText: true, platform: true },
-      take: 5,
-      orderBy: { createdAt: "desc" },
-    });
+    // Sample size is bounded by HALLUCINATION_SAMPLE_SIZE to control OpenAI cost.
+    // Default 20; override via env. Also count total to surface "more pending" hint.
+    const SAMPLE_SIZE = Math.max(
+      1,
+      Math.min(50, Number(process.env.HALLUCINATION_SAMPLE_SIZE) || 20)
+    );
+
+    const [mentionTexts, brandedTotal] = await Promise.all([
+      prisma.mention.findMany({
+        where: { projectId, brandMentioned: true, createdAt: { gte: since } },
+        select: { responseText: true, platform: true },
+        take: SAMPLE_SIZE,
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.mention.count({
+        where: { projectId, brandMentioned: true, createdAt: { gte: since } },
+      }),
+    ]);
+
+    if (brandedTotal > SAMPLE_SIZE) {
+      console.log(
+        `[citations] Hallucination check sampled ${SAMPLE_SIZE}/${brandedTotal} brand mentions for project ${projectId}`
+      );
+    }
+
     const hallucinationAlerts = await checkHallucinations(
       project.brandName,
       mentionTexts.map((m) => m.responseText),

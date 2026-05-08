@@ -9,6 +9,7 @@ import { put } from "@vercel/blob";
 import { ReportPDF } from "@/components/report/ReportPDF";
 import { createElement } from "react";
 import { startOfMonth, endOfMonth, subMonths } from "date-fns";
+import { runWithCronTracking } from "@/lib/cron-runner";
 
 export const maxDuration = 300; // 5 minutes
 
@@ -25,6 +26,18 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  try {
+    const result = await runWithCronTracking("weekly-report", () => runWeeklyReport());
+    return NextResponse.json({ ok: true, ...result });
+  } catch (err) {
+    return NextResponse.json(
+      { error: "weekly-report failed", detail: String(err) },
+      { status: 500 }
+    );
+  }
+}
+
+async function runWeeklyReport(): Promise<{ sent: number; failed: number }> {
   const now = new Date();
   const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
@@ -175,14 +188,13 @@ export async function GET(req: Request) {
     }
   }
 
-  return NextResponse.json({
-    ok: true,
+  return {
+    sent,
+    failed,
     usersProcessed: users.length,
-    emailsSent: sent,
-    emailsFailed: failed,
     weekLabel,
     autoReportsGenerated,
-  });
+  } as { sent: number; failed: number };
 }
 
 // ---------------------------------------------------------------------------

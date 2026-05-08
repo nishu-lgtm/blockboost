@@ -46,12 +46,12 @@ function OnboardingContent() {
 
     if (gscParam === "connected" && stepParam === "2") {
       // Restore project basics that were saved before OAuth redirect
-      const saved = sessionStorage.getItem("onboarding-basics");
+      const saved = localStorage.getItem("onboarding-basics");
       if (saved) {
         try {
           const parsed = JSON.parse(saved) as ProjectBasics;
           setBasics(parsed);
-          sessionStorage.removeItem("onboarding-basics");
+          localStorage.removeItem("onboarding-basics");
         } catch {
           // ignore parse errors
         }

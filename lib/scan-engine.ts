@@ -43,24 +43,16 @@ export function platformsForPlan(plan: string): Platform[] {
       // Starter: 3 platforms
       return [Platform.CHATGPT, Platform.PERPLEXITY, Platform.GOOGLE_AI_OVERVIEWS];
     case "GROWTH":
-      // Growth: 6 platforms (all currently supported)
-      return [
-        Platform.CHATGPT,
-        Platform.PERPLEXITY,
-        Platform.GOOGLE_AI_OVERVIEWS,
-        Platform.GEMINI,
-        Platform.COPILOT,
-        Platform.GROK,
-      ];
+    case "AGENCY":
     case "ENTERPRISE":
     default:
+      // Currently 3 supported platforms. GEMINI/COPILOT/GROK lack scrapers
+      // and would just return empty data, so we exclude them from automatic
+      // scans rather than burn API calls and show "0% mention rate" tiles.
       return [
         Platform.CHATGPT,
         Platform.PERPLEXITY,
         Platform.GOOGLE_AI_OVERVIEWS,
-        Platform.GEMINI,
-        Platform.COPILOT,
-        Platform.GROK,
       ];
   }
 }
@@ -69,7 +61,7 @@ export function platformsForPlan(plan: string): Platform[] {
 // Scraper dispatch
 // ---------------------------------------------------------------------------
 
-async function runScraper(
+export async function runScraper(
   platform: Platform,
   prompts: string[]
 ): Promise<{ platform: Platform; results: ScraperResult[] }> {

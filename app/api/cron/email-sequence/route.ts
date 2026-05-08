@@ -23,6 +23,39 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const cronRun = await prisma.cronRun.create({
+    data: { name: "email-sequence", status: "running" },
+  });
+  const startMs = cronRun.startedAt.getTime();
+
+  try {
+    const result = await processEmailSequence();
+    await prisma.cronRun.update({
+      where: { id: cronRun.id },
+      data: {
+        status: "success",
+        finishedAt: new Date(),
+        durationMs: Date.now() - startMs,
+        metadata: result as unknown as object,
+      },
+    });
+    return NextResponse.json(result);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    await prisma.cronRun.update({
+      where: { id: cronRun.id },
+      data: {
+        status: "error",
+        finishedAt: new Date(),
+        durationMs: Date.now() - startMs,
+        error: message.slice(0, 2000),
+      },
+    });
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+async function processEmailSequence() {
   const now = new Date();
 
   // Fetch up to 50 due scheduled emails (basic fields only)
@@ -135,7 +168,7 @@ export async function GET(req: Request) {
     }
   }
 
-  return NextResponse.json({ processed: results.length, results });
+  return { processed: results.length, results };
 }
 
 // ─── Trial sequence builder ───────────────────────────────────────────────────

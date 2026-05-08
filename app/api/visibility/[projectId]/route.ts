@@ -115,9 +115,13 @@ export async function GET(
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
+    // Cap analysis to last 90 days to prevent unbounded loads as data grows.
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
     const [allMentions, recentMentions, citations] = await Promise.all([
       prisma.mention.findMany({
-        where: { projectId },
+        where: { projectId, createdAt: { gte: ninetyDaysAgo } },
         select: {
           id: true,
           promptId: true,
@@ -231,8 +235,18 @@ export async function GET(
     });
 
     // ── 5. Prompt breakdown ──────────────────────────────────────────────
+    // Pre-bucket mentions by promptId once → O(N), so the per-prompt loop
+    // doesn't filter the full array on every iteration (used to be O(P×N)).
+    const mentionsByPrompt = new Map<string, typeof allMentions>();
+    for (const m of allMentions) {
+      if (!m.promptId) continue;
+      const arr = mentionsByPrompt.get(m.promptId);
+      if (arr) arr.push(m);
+      else mentionsByPrompt.set(m.promptId, [m]);
+    }
+
     const promptBreakdown: PromptRow[] = project.prompts.map((prompt) => {
-      const promptMentions = allMentions.filter((m) => m.promptId === prompt.id);
+      const promptMentions = mentionsByPrompt.get(prompt.id) ?? [];
 
       const resultsByPlatform = new Map<string, PromptResult>();
       for (const m of promptMentions) {

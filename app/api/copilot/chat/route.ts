@@ -34,7 +34,11 @@ async function buildContext(projectId: string, userId: string) {
       },
     }),
     prisma.mention.findMany({
-      where: { projectId },
+      // Cap to last 30 days + 200 rows for chat-context budget
+      where: {
+        projectId,
+        createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+      },
       select: {
         promptId: true,
         platform: true,
@@ -43,7 +47,7 @@ async function buildContext(projectId: string, userId: string) {
         sentiment: true,
       },
       orderBy: { createdAt: "desc" },
-      take: 2000,
+      take: 200,
     }),
     prisma.citation.findMany({
       where: { projectId },
@@ -169,7 +173,7 @@ async function buildContext(projectId: string, userId: string) {
     latestAudit?.recommendations &&
     Array.isArray(latestAudit.recommendations) &&
     latestAudit.recommendations.length > 0
-      ? (latestAudit.recommendations[0] as { title?: string })?.title ?? "Run a full AEO audit"
+      ? (latestAudit.recommendations[0] as { issue?: string; action?: string })?.issue ?? "Run a full AEO audit"
       : "Run a full AEO audit";
 
   return {

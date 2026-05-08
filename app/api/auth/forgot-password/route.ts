@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 const bodySchema = z.object({
   email: z.string().email(),
@@ -22,6 +23,16 @@ function generateResetToken(userId: string): string {
 }
 
 export async function POST(req: Request) {
+  // Rate limit: 3 attempts per IP per 15 min — prevents enumeration + spam
+  const ip = clientIp(req);
+  const limited = rateLimit(`forgot:${ip}`, 3, 15 * 60 * 1000);
+  if (!limited.ok) {
+    return NextResponse.json(
+      { error: "Too many requests. Try again later." },
+      { status: 429, headers: { "Retry-After": String(limited.retryAfter) } }
+    );
+  }
+
   const body = await req.json().catch(() => ({}));
   const parsed = bodySchema.safeParse(body);
   if (!parsed.success) {

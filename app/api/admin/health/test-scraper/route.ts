@@ -4,6 +4,7 @@ import { logAudit } from "@/lib/audit";
 
 export const POST = adminRoute("SUPPORT", async (req: NextRequest, { admin }) => {
   const { platform } = (await req.json()) as { platform: string };
+  const startedAt = Date.now();
 
   await logAudit({
     adminUserId: admin.id,
@@ -11,20 +12,37 @@ export const POST = adminRoute("SUPPORT", async (req: NextRequest, { admin }) =>
     details: { platform },
   });
 
-  // In production, this would call the Apify actor directly.
-  // For now, return a mock result.
+  // Try to call the real scraper for a short test prompt. If the platform
+  // doesn't have a scraper implementation (Gemini/Copilot/Grok currently),
+  // surface that honestly so admins see real status.
   const testPrompt = "What are the best AI visibility tools for small businesses?";
-  const mockResponse = `This is a simulated test response for ${platform}. ` +
-    `In production, this would call the ${platform} scraper via Apify and return the actual response. ` +
-    `The response would then be parsed by the mention parser to verify it's working correctly.`;
+  let rawResponse = "";
+  let parsedOk = false;
+  let error: string | null = null;
+
+  try {
+    const { runScraper } = await import("@/lib/scan-engine");
+    if (typeof runScraper === "function") {
+      const result = await runScraper(platform as never, [testPrompt]);
+      const first = result.results[0];
+      rawResponse = first?.response ?? "(no response)";
+      parsedOk = !!first;
+    } else {
+      rawResponse = "Scraper test not yet implemented for this platform.";
+    }
+  } catch (err) {
+    error = err instanceof Error ? err.message : String(err);
+    rawResponse = `Error: ${error}`;
+  }
 
   return NextResponse.json({
-    ok: true,
+    ok: error === null,
     platform,
     testPrompt,
-    rawResponse: mockResponse,
-    parsedOk: true,
-    latencyMs: Math.floor(Math.random() * 2000) + 500,
+    rawResponse,
+    parsedOk,
+    error,
+    latencyMs: Date.now() - startedAt,
     timestamp: new Date().toISOString(),
   });
 });

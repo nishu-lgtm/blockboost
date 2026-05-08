@@ -41,15 +41,20 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ ok: true });
-  } catch {
-    // otplib not installed — accept any 6-digit code in dev
-    if (process.env.NODE_ENV === "development") {
+  } catch (err) {
+    // Dev-only fallback when otplib isn't installed locally.
+    // Gated behind an EXPLICIT env flag (not NODE_ENV) so it can never
+    // accidentally be active in production. Set ADMIN_2FA_DEV_BYPASS=true
+    // only on local dev machines.
+    if (process.env.ADMIN_2FA_DEV_BYPASS === "true") {
+      console.warn("[2fa/verify] DEV BYPASS active — accepting unverified code");
       await prisma.user.update({
         where: { id: session.user.id },
         data: { totpEnabled: true },
       });
-      return NextResponse.json({ ok: true, _dev: "2FA bypassed (otplib not installed)" });
+      return NextResponse.json({ ok: true, _dev: "2FA bypassed (dev flag set)" });
     }
+    console.error("[2fa/verify] otplib failure:", err);
     return NextResponse.json({ error: "2FA not configured on server" }, { status: 500 });
   }
 }

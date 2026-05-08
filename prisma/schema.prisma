@@ -269,6 +269,10 @@ model Citation {
 
   mention Mention @relation(fields: [mentionId], references: [id], onDelete: Cascade)
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  // Lets `createMany({ skipDuplicates: true })` actually deduplicate citations
+  @@unique([mentionId, url])
+  @@index([projectId])
 }
 
 model AuditReport {
@@ -452,21 +456,27 @@ model AdminEmail {
 // ─────────────────────────────────────────────────────────────
 
 model CancellationRecord {
-  id               String   @id @default(cuid())
+  id               String    @id @default(cuid())
   userId           String
   reason           String
   otherText        String?
   offerShown       String?
-  offerAccepted    Boolean  @default(false)
+  offerAccepted    Boolean   @default(false)
   featureRequested String?
   competitorNamed  String?
   pauseDuration    Int?
-  wantNotified     Boolean  @default(false)
-  wantWinback      Boolean  @default(false)
-  cancelled        Boolean  @default(true)
-  createdAt        DateTime @default(now())
+  wantNotified     Boolean   @default(false)
+  wantWinback      Boolean   @default(false)
+  cancelled        Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  // Idempotency for winback emails so resume-paused cron can't double-send
+  winback30SentAt  DateTime?
+  winback90SentAt  DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([cancelled, createdAt, winback30SentAt])
+  @@index([cancelled, wantWinback, createdAt, winback90SentAt])
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -516,6 +526,21 @@ model ScheduledEmail {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([sendAt, cancelled, sentAt])
+}
+
+// Records every cron job invocation. Read by /api/admin/health to display
+// real cron history (was previously hardcoded with Math.random()).
+model CronRun {
+  id         String    @id @default(cuid())
+  name       String    // e.g. "daily-scan", "weekly-report"
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  status     String    @default("running") // "running" | "success" | "error"
+  durationMs Int?
+  error      String?   @db.Text
+  metadata   Json?
+
+  @@index([name, startedAt])
 }
 
 // ─────────────────────────────────────────────────────────────
