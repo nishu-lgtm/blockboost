@@ -26,7 +26,7 @@ function ErrorContent() {
           <div className="flex items-center justify-center w-8 h-8 bg-indigo-600 rounded-lg">
             <BarChart3 className="h-5 w-5 text-white" />
           </div>
-          <span className="text-xl font-bold text-slate-900">VisibilityIQ</span>
+          <span className="text-xl font-bold text-slate-900">BlockBoost</span>
         </Link>
 
         <div className="flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mx-auto mb-6">

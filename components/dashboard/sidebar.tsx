@@ -145,7 +145,7 @@ export default function Sidebar() {
         <div className="flex items-center justify-center w-8 h-8 bg-indigo-600 rounded-lg shrink-0">
           <BarChart3 className="h-5 w-5 text-white" />
         </div>
-        <span className="text-lg font-bold text-slate-900">VisibilityIQ</span>
+        <span className="text-lg font-bold text-slate-900">BlockBoost</span>
       </div>
 
       {/* Project selector */}

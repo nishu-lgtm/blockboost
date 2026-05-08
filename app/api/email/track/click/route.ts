@@ -9,7 +9,7 @@ export async function GET(req: Request) {
   if (id) {
     try {
       await prisma.emailSent.updateMany({
-        where: { id, clickedAt: null },
+        where: { trackingId: id, clickedAt: null },
         data: { clickedAt: new Date() },
       });
     } catch {

@@ -31,6 +31,8 @@ function OnboardingContent() {
     name: "",
     websiteUrl: "",
     brandName: "",
+    businessCategory: "",
+    city: "",
   });
   const [prompts, setPrompts] = useState<PromptItem[]>([]);
   const [competitors, setCompetitors] = useState<CompetitorItem[]>([
@@ -76,6 +78,8 @@ function OnboardingContent() {
           name: basics.name,
           websiteUrl: basics.websiteUrl,
           brandName: basics.brandName,
+          businessCategory: basics.businessCategory,
+          city: basics.city,
           prompts: selectedPrompts.map((p) => ({
             text: p.text,
             category: p.category,
@@ -121,7 +125,7 @@ function OnboardingContent() {
           <div className="flex items-center justify-center w-8 h-8 bg-indigo-600 rounded-lg">
             <BarChart3 className="h-5 w-5 text-white" />
           </div>
-          <span className="text-lg font-bold text-slate-900">VisibilityIQ</span>
+          <span className="text-lg font-bold text-slate-900">BlockBoost</span>
         </div>
         <span className="ml-4 text-sm text-slate-400">Set up your first project</span>
       </header>

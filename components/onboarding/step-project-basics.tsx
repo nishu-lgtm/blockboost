@@ -152,6 +152,38 @@ export default function StepProjectBasics({ basics, onChange, onNext }: Props) {
             </p>
           </div>
 
+          <div className="space-y-1.5">
+            <Label htmlFor="businessCategory" className="text-slate-700 font-medium">
+              Business category <span className="text-slate-400 font-normal">(optional)</span>
+            </Label>
+            <Input
+              id="businessCategory"
+              placeholder="e.g. plumber, dentist, coffee shop"
+              value={basics.businessCategory}
+              onChange={(e) => handleChange("businessCategory", e.target.value)}
+              className="h-11 border-slate-300"
+            />
+            <p className="text-xs text-slate-400">
+              Helps tailor reply suggestions for local discovery.
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="city" className="text-slate-700 font-medium">
+              City <span className="text-slate-400 font-normal">(optional)</span>
+            </Label>
+            <Input
+              id="city"
+              placeholder="e.g. Mumbai"
+              value={basics.city}
+              onChange={(e) => handleChange("city", e.target.value)}
+              className="h-11 border-slate-300"
+            />
+            <p className="text-xs text-slate-400">
+              Used for local-business reply context.
+            </p>
+          </div>
+
           <div className="pt-2">
             <Button
               type="submit"

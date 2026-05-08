@@ -10,6 +10,8 @@ const createProjectSchema = z.object({
     .min(1, "Website URL is required")
     .url("Must be a valid URL"),
   brandName: z.string().min(1, "Brand name is required").max(100),
+  businessCategory: z.string().max(100).optional().or(z.literal("")),
+  city: z.string().max(100).optional().or(z.literal("")),
   prompts: z
     .array(
       z.object({
@@ -45,7 +47,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { name, websiteUrl, brandName, prompts, competitors } = parsed.data;
+    const { name, websiteUrl, brandName, businessCategory, city, prompts, competitors } = parsed.data;
 
     // Create project, prompts, and competitors in a single transaction
     const project = await prisma.$transaction(async (tx) => {
@@ -54,6 +56,8 @@ export async function POST(req: Request) {
           name,
           websiteUrl,
           brandName,
+          businessCategory: businessCategory?.trim() || null,
+          city: city?.trim() || null,
           userId: session.user!.id!,
         },
       });

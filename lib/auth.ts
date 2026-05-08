@@ -4,16 +4,11 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { authConfig } from "@/auth.config";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   adapter: PrismaAdapter(prisma),
-  session: {
-    strategy: "jwt",
-  },
-  pages: {
-    signIn: "/auth/login",
-    error: "/auth/error",
-  },
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -60,6 +55,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async createUser({ user }) {
       // OAuth signup — fire the email activation sequence
       if (user.id) {
+        // Set trial end date if not already set
+        const dbUser = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { trialEndsAt: true },
+        });
+        if (dbUser && !dbUser.trialEndsAt) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) },
+          });
+        }
         import("@/lib/email-triggers").then(({ onUserSignup }) =>
           onUserSignup(user.id!).catch((e) =>
             console.error("[auth] onUserSignup failed:", e)

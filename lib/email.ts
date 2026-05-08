@@ -13,8 +13,8 @@ function getResend() {
   return new Resend(key);
 }
 
-const FROM = process.env.RESEND_FROM_EMAIL ?? "noreply@visibilityiq.app";
-const APP_URL = process.env.NEXTAUTH_URL ?? "https://visibilityiq.app";
+const FROM = process.env.RESEND_FROM_EMAIL ?? "noreply@blockboost.co";
+const APP_URL = process.env.NEXTAUTH_URL ?? "https://blockboost.co";
 
 // ---------------------------------------------------------------------------
 // Shared template helpers
@@ -36,7 +36,7 @@ function emailWrapper(content: string): string {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>VisibilityIQ</title>
+<title>BlockBoost</title>
 </head>
 <body style="margin:0;padding:0;background-color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
 <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#f1f5f9;">
@@ -46,7 +46,7 @@ function emailWrapper(content: string): string {
   <!-- Footer -->
   <tr><td style="padding:20px 32px;background-color:#f8fafc;border-top:1px solid #e2e8f0;border-radius:0 0 16px 16px;text-align:center;">
     <p style="margin:0;font-size:12px;color:#94a3b8;">
-      VisibilityIQ &nbsp;·&nbsp;
+      BlockBoost &nbsp;·&nbsp;
       <a href="${APP_URL}/dashboard/settings?tab=notifications" style="color:#94a3b8;text-decoration:underline;">Manage notifications</a>
       &nbsp;·&nbsp;
       <a href="${APP_URL}/dashboard" style="color:#94a3b8;text-decoration:underline;">Open dashboard</a>
@@ -66,7 +66,7 @@ function emailHeader(title: string, subtitle?: string): string {
       <span style="color:#ffffff;font-size:20px;">📊</span>
     </td>
     <td style="padding-left:10px;vertical-align:middle;">
-      <span style="font-size:17px;font-weight:700;color:#0f172a;">VisibilityIQ</span>
+      <span style="font-size:17px;font-weight:700;color:#0f172a;">BlockBoost</span>
     </td>
   </tr></table>
   <h1 style="margin:20px 0 4px;font-size:22px;font-weight:700;color:#0f172a;line-height:1.3;">${title}</h1>

@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "VisibilityIQ – AI Brand Monitoring Platform",
+  title: "BlockBoost – AI Brand Monitoring Platform",
   description:
     "Know exactly when and where AI recommends your brand. Monitor citations across ChatGPT, Claude, Gemini, and more.",
 };

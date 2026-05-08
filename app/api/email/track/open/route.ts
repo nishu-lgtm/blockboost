@@ -14,7 +14,7 @@ export async function GET(req: Request) {
   if (id) {
     try {
       await prisma.emailSent.updateMany({
-        where: { id, openedAt: null },
+        where: { trackingId: id, openedAt: null },
         data: { openedAt: new Date() },
       });
     } catch {

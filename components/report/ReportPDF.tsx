@@ -393,7 +393,7 @@ function PageHeader({ title, brand }: { title: string; brand: string }) {
 function PageFooter({ page, total, period }: { page: number; total: number; period: string }) {
   return (
     <View style={S.pageFooter} fixed>
-      <Text style={S.pageFooterText}>VisibilityIQ · Confidential</Text>
+      <Text style={S.pageFooterText}>BlockBoost · Confidential</Text>
       <Text style={S.pageFooterText}>{period}</Text>
       <Text style={S.pageFooterText}>
         {page} / {total}
@@ -446,7 +446,7 @@ function CoverPage({ data }: { data: ReportData }) {
     <Page size="A4" style={S.page}>
       {/* Indigo header bar */}
       <View style={S.coverHeader}>
-        <Text style={S.coverLogoText}>VisibilityIQ</Text>
+        <Text style={S.coverLogoText}>BlockBoost</Text>
         <Text style={S.coverHeaderRight}>AI Visibility Intelligence Platform</Text>
       </View>
 
@@ -488,7 +488,7 @@ function CoverPage({ data }: { data: ReportData }) {
         <View style={S.coverDivider} />
         <View style={S.coverFooter}>
           <Text style={S.coverFooterLeft}>{data.project.websiteUrl}</Text>
-          <Text style={S.coverWatermark}>Powered by VisibilityIQ</Text>
+          <Text style={S.coverWatermark}>Powered by BlockBoost</Text>
         </View>
       </View>
     </Page>
@@ -980,7 +980,7 @@ function NextStepsPage({
   data: ReportData;
   branding: BrandingOptions;
 }) {
-  const company = branding.companyName ?? "VisibilityIQ";
+  const company = branding.companyName ?? "BlockBoost";
   const tagline = branding.tagline ?? "AI Visibility Intelligence";
   const color = branding.primaryColor ?? INDIGO;
   const showWatermark = branding.showWatermark ?? true;
@@ -1064,7 +1064,7 @@ function NextStepsPage({
           <Text style={{ fontSize: 11, color: GRAY_500 }}>{tagline}</Text>
           {showWatermark && (
             <Text style={{ fontSize: 9, color: GRAY_400, marginTop: 8 }}>
-              Powered by VisibilityIQ · visibilityiq.app
+              Powered by BlockBoost · blockboost.co
             </Text>
           )}
         </View>
@@ -1087,9 +1087,9 @@ export function ReportPDF({ data, branding = {} }: ReportPDFProps) {
   return (
     <Document
       title={`AI Visibility Report — ${data.project.brandName} — ${data.period.label}`}
-      author="VisibilityIQ"
+      author="BlockBoost"
       subject="AI Visibility Report"
-      creator="VisibilityIQ Platform"
+      creator="BlockBoost Platform"
       producer="@react-pdf/renderer"
     >
       <CoverPage data={data} />

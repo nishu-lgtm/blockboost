@@ -1,6 +1,6 @@
 /**
  * Public shared report page — no authentication required.
- * Renders a clean web view of the report data with a "Powered by VisibilityIQ" watermark.
+ * Renders a clean web view of the report data with a "Powered by BlockBoost" watermark.
  */
 
 import { notFound } from "next/navigation";
@@ -33,11 +33,11 @@ export async function generateMetadata({
   if (!report) return { title: "Report not found" };
   return {
     title: `AI Visibility Report — ${report.project.brandName}`,
-    description: `AI Visibility Report for ${report.project.brandName}. Powered by VisibilityIQ.`,
+    description: `AI Visibility Report for ${report.project.brandName}. Powered by BlockBoost.`,
     openGraph: {
       title: `AI Visibility Report — ${report.project.brandName}`,
       description: "See how this brand performs across ChatGPT, Gemini, Perplexity, and more.",
-      siteName: "VisibilityIQ",
+      siteName: "BlockBoost",
     },
   };
 }
@@ -80,7 +80,7 @@ export default async function SharedReportPage({
           <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
             <BarChart3 className="w-4 h-4 text-white" />
           </div>
-          <span className="font-bold text-slate-900">VisibilityIQ</span>
+          <span className="font-bold text-slate-900">BlockBoost</span>
         </div>
         <div className="flex items-center gap-3">
           {report.pdfUrl && (
@@ -95,7 +95,7 @@ export default async function SharedReportPage({
             </a>
           )}
           <a
-            href="https://visibilityiq.app"
+            href="https://blockboost.co"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
@@ -328,12 +328,12 @@ export default async function SharedReportPage({
             Track your brand across ChatGPT, Gemini, Perplexity and more. Start free.
           </p>
           <a
-            href="https://visibilityiq.app"
+            href="https://blockboost.co"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-block bg-white text-indigo-700 font-bold px-8 py-3 rounded-xl hover:bg-indigo-50 transition-colors"
           >
-            Try VisibilityIQ free →
+            Try BlockBoost free →
           </a>
         </div>
 
@@ -341,10 +341,10 @@ export default async function SharedReportPage({
         <p className="text-center text-slate-400 text-xs pb-8">
           Powered by{" "}
           <a
-            href="https://visibilityiq.app"
+            href="https://blockboost.co"
             className="text-indigo-500 hover:underline"
           >
-            VisibilityIQ
+            BlockBoost
           </a>{" "}
           · AI Visibility Intelligence
         </p>

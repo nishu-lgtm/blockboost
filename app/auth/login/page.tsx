@@ -58,13 +58,13 @@ export default function LoginPage() {
           <div className="flex items-center justify-center w-8 h-8 bg-white/20 rounded-lg">
             <BarChart3 className="h-5 w-5 text-white" />
           </div>
-          <span className="text-xl font-bold text-white">VisibilityIQ</span>
+          <span className="text-xl font-bold text-white">BlockBoost</span>
         </Link>
 
         <div>
           <blockquote className="text-white">
             <p className="text-2xl font-medium leading-relaxed mb-6">
-              "VisibilityIQ transformed how we think about AI search. We went from invisible to
+              "BlockBoost transformed how we think about AI search. We went from invisible to
               being cited in 68% of relevant ChatGPT responses in just 90 days."
             </p>
             <footer>
@@ -75,7 +75,7 @@ export default function LoginPage() {
         </div>
 
         <div className="flex items-center gap-4 text-indigo-200 text-sm">
-          <span>500+ brands trust VisibilityIQ</span>
+          <span>500+ brands trust BlockBoost</span>
           <span>·</span>
           <span>SOC 2 Type II certified</span>
         </div>
@@ -88,12 +88,12 @@ export default function LoginPage() {
             <div className="flex items-center justify-center w-8 h-8 bg-indigo-600 rounded-lg">
               <BarChart3 className="h-5 w-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-slate-900">VisibilityIQ</span>
+            <span className="text-xl font-bold text-slate-900">BlockBoost</span>
           </div>
 
           <div className="mb-8">
             <h1 className="text-2xl font-bold text-slate-900 mb-2">Welcome back</h1>
-            <p className="text-slate-500">Sign in to your VisibilityIQ account</p>
+            <p className="text-slate-500">Sign in to your BlockBoost account</p>
           </div>
 
           <Button

@@ -4,7 +4,7 @@
 
 import { AlertType } from "@prisma/client";
 
-const APP_URL = process.env.NEXTAUTH_URL ?? "https://visibilityiq.app";
+const APP_URL = process.env.NEXTAUTH_URL ?? "https://blockboost.co";
 
 // ---------------------------------------------------------------------------
 // Types

@@ -38,6 +38,7 @@ export async function POST(req: Request) {
         name,
         email,
         password: hashedPassword,
+        trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
       },
     });
 

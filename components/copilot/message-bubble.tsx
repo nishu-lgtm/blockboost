@@ -65,7 +65,7 @@ function ShareBtn({ content }: { content: string }) {
           <svg viewBox="0 0 24 24" width="20" height="20" fill="white"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
         </div>
         <div>
-          <div style="font-size:14px;font-weight:700;color:#1e1b4b;">VisibilityIQ Copilot</div>
+          <div style="font-size:14px;font-weight:700;color:#1e1b4b;">BlockBoost Copilot</div>
           <div style="font-size:11px;color:#6366f1;">AI Visibility Insight</div>
         </div>
       `;
@@ -91,7 +91,7 @@ function ShareBtn({ content }: { content: string }) {
       const footer = document.createElement("div");
       footer.style.cssText =
         "margin-top: 20px; font-size: 11px; color: #94a3b8; text-align: right;";
-      footer.textContent = `visibilityiq.app • ${new Date().toLocaleDateString()}`;
+      footer.textContent = `blockboost.co • ${new Date().toLocaleDateString()}`;
       wrapper.appendChild(footer);
 
       document.body.appendChild(wrapper);

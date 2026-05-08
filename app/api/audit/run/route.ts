@@ -30,7 +30,7 @@ async function fetchHtml(url: string): Promise<string> {
   const res = await fetch(url, {
     headers: {
       "User-Agent":
-        "Mozilla/5.0 (compatible; VisibilityIQ-Audit/1.0; +https://visibilityiq.io/bot)",
+        "Mozilla/5.0 (compatible; BlockBoost-Audit/1.0; +https://blockboost.co/bot)",
       Accept: "text/html,application/xhtml+xml",
     },
     signal: AbortSignal.timeout(15_000),

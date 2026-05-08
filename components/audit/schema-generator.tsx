@@ -48,8 +48,8 @@ How to Set Up Your Account
     label: "Product",
     placeholder: `Paste your product details:
 
-Product: VisibilityIQ Pro
-Brand: VisibilityIQ
+Product: BlockBoost Pro
+Brand: BlockBoost
 Price: $299/month
 Description: Track your brand across all AI platforms in real time.
 Availability: In Stock`,

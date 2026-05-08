@@ -77,7 +77,7 @@ export default function SignupPage() {
           <div className="flex items-center justify-center w-8 h-8 bg-indigo-600 rounded-lg">
             <BarChart3 className="h-5 w-5 text-white" />
           </div>
-          <span className="text-xl font-bold text-white">VisibilityIQ</span>
+          <span className="text-xl font-bold text-white">BlockBoost</span>
         </Link>
 
         <div>
@@ -115,7 +115,7 @@ export default function SignupPage() {
             <div className="flex items-center justify-center w-8 h-8 bg-indigo-600 rounded-lg">
               <BarChart3 className="h-5 w-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-slate-900">VisibilityIQ</span>
+            <span className="text-xl font-bold text-slate-900">BlockBoost</span>
           </div>
 
           <div className="mb-8">

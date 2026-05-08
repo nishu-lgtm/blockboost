@@ -2,6 +2,8 @@ export interface ProjectBasics {
   name: string;
   websiteUrl: string;
   brandName: string;
+  businessCategory: string;
+  city: string;
 }
 
 export interface PromptItem {

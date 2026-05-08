@@ -15,6 +15,21 @@ import { generateTrackingId, generateUnsubscribeToken } from "@/lib/email-render
 const APP_URL = process.env.NEXTAUTH_URL ?? "https://blockboost.co";
 const FROM = process.env.EMAIL_FROM ?? "Tom from BlockBoost <tom@blockboost.co>";
 
+/**
+ * Compute the next 9am send time, daysFromNow days in the future.
+ * If that 9am has already passed today, push to the following day's 9am.
+ * Used to align scheduled emails with the daily 9am cron.
+ */
+function nextSendTime(daysFromNow: number): Date {
+  const d = new Date();
+  d.setDate(d.getDate() + daysFromNow);
+  d.setHours(9, 0, 0, 0);
+  if (d.getTime() <= Date.now()) {
+    d.setDate(d.getDate() + 1);
+  }
+  return d;
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type EmailType = "tips" | "billing" | "weeklyReport" | "monthlySummary" | "alerts";
@@ -27,6 +42,7 @@ interface SendOptions {
   step: string;
   html: string;
   emailType: EmailType;
+  trackingId?: string;
 }
 
 // ─── Core send helper ─────────────────────────────────────────────────────────
@@ -71,7 +87,14 @@ export async function sendEmail(opts: SendOptions): Promise<void> {
         : undefined;
 
     await prisma.emailSent.create({
-      data: { userId, sequence, step, subject, resendMessageId: messageId ?? null },
+      data: {
+        userId,
+        sequence,
+        step,
+        subject,
+        resendMessageId: messageId ?? null,
+        trackingId: opts.trackingId ?? null,
+      },
     });
   } catch (err) {
     console.error(`[email-triggers] Failed to send ${sequence}/${step} to ${userId}:`, err);
@@ -134,7 +157,7 @@ async function buildAndSend(
   const trackingId = generateTrackingId();
   const unsubscribeToken = generateUnsubscribeToken(userId);
   const html = await buildHtml(trackingId, unsubscribeToken);
-  await sendEmail({ userId, to: email, subject, sequence, step, html, emailType });
+  await sendEmail({ userId, to: email, subject, sequence, step, html, emailType, trackingId });
 }
 
 // ─── Event hooks ─────────────────────────────────────────────────────────────
@@ -153,10 +176,6 @@ export async function onUserSignup(userId: string): Promise<void> {
   const firstName = (user.name ?? "there").split(" ")[0];
   await getOrCreateActivationState(userId);
 
-  const now = new Date();
-  const h = (hours: number) => new Date(now.getTime() + hours * 3600 * 1000);
-  const d = (days: number) => new Date(now.getTime() + days * 86400 * 1000);
-
   // A1 — immediate
   await buildAndSend(userId, user.email, "trial", "A1", "Welcome to BlockBoost 👋", "tips",
     async (trackingId, unsubscribeToken) => {
@@ -167,16 +186,16 @@ export async function onUserSignup(userId: string): Promise<void> {
     }
   );
 
-  // Schedule the rest
-  await scheduleEmail(userId, "trial", "A2", h(1));   // 1h — score ready
-  await scheduleEmail(userId, "trial", "A3", d(2));   // day 2 — competitor nudge
-  await scheduleEmail(userId, "trial", "A4", d(3));   // day 3 — comparison or no-competitor
-  await scheduleEmail(userId, "trial", "A5", d(5));   // day 5 — brief
-  await scheduleEmail(userId, "trial", "A6", d(7));   // day 7 — weekly
-  await scheduleEmail(userId, "trial", "A7", d(10));  // day 10 — GSC
-  await scheduleEmail(userId, "trial", "A8", d(11));  // day 11 — trial ending
-  await scheduleEmail(userId, "trial", "A9", d(13));  // day 13 — last day
-  await scheduleEmail(userId, "trial", "A10", d(14)); // day 14 — trial ended
+  // Schedule the rest — all aligned to 9am cron
+  await scheduleEmail(userId, "trial", "A2", nextSendTime(0));   // tomorrow 9am — score ready
+  await scheduleEmail(userId, "trial", "A3", nextSendTime(2));   // day 2 — competitor nudge
+  await scheduleEmail(userId, "trial", "A4", nextSendTime(3));   // day 3 — comparison or no-competitor
+  await scheduleEmail(userId, "trial", "A5", nextSendTime(5));   // day 5 — brief
+  await scheduleEmail(userId, "trial", "A6", nextSendTime(7));   // day 7 — weekly
+  await scheduleEmail(userId, "trial", "A7", nextSendTime(10));  // day 10 — GSC
+  await scheduleEmail(userId, "trial", "A8", nextSendTime(11));  // day 11 — trial ending
+  await scheduleEmail(userId, "trial", "A9", nextSendTime(13));  // day 13 — last day
+  await scheduleEmail(userId, "trial", "A10", nextSendTime(14)); // day 14 — trial ended
 }
 
 /**
@@ -314,9 +333,6 @@ export async function onPaidConversion(
     update: { convertedToPaid: new Date() },
   });
 
-  const now = new Date();
-  const d = (days: number) => new Date(now.getTime() + days * 86400 * 1000);
-
   // B1 — immediate
   await buildAndSend(userId, user.email, "paid", "B1",
     `Welcome to BlockBoost ${planName} 🎉`,
@@ -329,9 +345,9 @@ export async function onPaidConversion(
     }
   );
 
-  // Schedule B2–B5
-  await scheduleEmail(userId, "paid", "B2", d(21));   // day 21 — report nudge (if no report)
-  await scheduleEmail(userId, "paid", "B4", d(30));   // day 30 — NPS
-  await scheduleEmail(userId, "paid", "B5", d(60));   // day 60 — re-engagement (if low usage)
+  // Schedule B2–B5 — aligned to 9am cron
+  await scheduleEmail(userId, "paid", "B2", nextSendTime(21));   // day 21 — report nudge (if no report)
+  await scheduleEmail(userId, "paid", "B4", nextSendTime(30));   // day 30 — NPS
+  await scheduleEmail(userId, "paid", "B5", nextSendTime(60));   // day 60 — re-engagement (if low usage)
   // B3 (monthly) is scheduled by the monthly cron, not here
 }
