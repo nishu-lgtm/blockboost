@@ -94,9 +94,16 @@ export async function POST(req: Request) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("Registration error:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    const stack = error instanceof Error ? error.stack : undefined;
+    console.error("[register] error:", message, stack);
+    // TEMPORARY DEBUG: include error message in response so we can diagnose
+    // the production 500. Remove `detail` once root cause is fixed.
     return NextResponse.json(
-      { error: "Something went wrong. Please try again." },
+      {
+        error: "Something went wrong. Please try again.",
+        detail: message,
+      },
       { status: 500 }
     );
   }
