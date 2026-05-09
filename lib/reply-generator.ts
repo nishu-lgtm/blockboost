@@ -116,7 +116,16 @@ function buildSystemPrompt(
   const { brandName, city, businessCategory, keyServices, platform } = input;
   const services = keyServices?.length ? keyServices.join(", ") : businessCategory;
 
-  return `You are helping ${brandName}, a ${businessCategory} business in ${city}, respond to a social media post to establish their expertise and potentially get recommended.
+  // Build the opening contextual sentence WITHOUT empty-string injection.
+  // Previously: "...a {category} business in ." when city was missing.
+  const cityClause = city && city.trim().length > 0 ? ` in ${city.trim()}` : "";
+  const businessLine = `${brandName}, a ${businessCategory} business${cityClause}`;
+
+  // Same sanitisation for the structured details block.
+  const locationLine =
+    city && city.trim().length > 0 ? `- Location: ${city}` : "- Location: (not specified)";
+
+  return `You are helping ${businessLine}, respond to a social media post to establish their expertise and potentially get recommended.
 
 CRITICAL RULES:
 1. NEVER directly advertise or lead with the business name
@@ -132,7 +141,7 @@ CRITICAL RULES:
 
 Business details:
 - Name: ${brandName}
-- Location: ${city}
+${locationLine}
 - Category: ${businessCategory}
 - Services: ${services}
 

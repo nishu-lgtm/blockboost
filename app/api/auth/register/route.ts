@@ -8,8 +8,17 @@ import { verifyTurnstile } from "@/lib/turnstile";
 import { sendVerificationEmail } from "@/lib/email-verification";
 
 const bodySchema = z.object({
-  name: z.string().min(1, "Name is required").max(120),
-  email: z.string().email("Please enter a valid email address").max(254),
+  name: z
+    .string()
+    .trim()
+    .min(1, "Name is required")
+    .max(120),
+  email: z
+    .string()
+    .trim()
+    .max(254)
+    .toLowerCase()
+    .email("Please enter a valid email address"),
   password: z.string().min(1, "Password is required"),
   turnstileToken: z.string().optional(),
 });
@@ -49,11 +58,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: policy.error }, { status: 400 });
     }
 
-    // Normalise email — lower-case so case-mismatched logins still work
-    const normalisedEmail = email.trim().toLowerCase();
-
+    // Email is already trimmed + lowercased by the Zod schema above.
     const existingUser = await prisma.user.findUnique({
-      where: { email: normalisedEmail },
+      where: { email },
     });
     if (existingUser) {
       return NextResponse.json(
@@ -67,7 +74,7 @@ export async function POST(req: Request) {
     const user = await prisma.user.create({
       data: {
         name,
-        email: normalisedEmail,
+        email,
         password: hashedPassword,
         trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
         // emailVerified intentionally null — verified via the link we send below
@@ -76,7 +83,7 @@ export async function POST(req: Request) {
 
     // Fire-and-forget: verification email + activation sequence.
     // Verification email is independent of the A1 welcome (different purpose).
-    sendVerificationEmail({ to: normalisedEmail, name, userId: user.id }).catch(
+    sendVerificationEmail({ to: email, name, userId: user.id }).catch(
       (e) => console.error("[register] sendVerificationEmail failed:", e)
     );
 

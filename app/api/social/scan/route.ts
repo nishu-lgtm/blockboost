@@ -19,9 +19,13 @@ export async function POST(req: Request) {
     where: { id: session.user.id },
     select: { plan: true },
   });
-  if (!user || (user.plan !== "GROWTH" && user.plan !== "ENTERPRISE")) {
+  // Plan gate must match opportunities + replies endpoints (GROWTH/AGENCY/ENTERPRISE).
+  // Previously missing AGENCY here meant agency users could view opportunities and
+  // generate replies but couldn't trigger a scan to populate them.
+  const allowed = ["GROWTH", "AGENCY", "ENTERPRISE"];
+  if (!user || !allowed.includes(user.plan)) {
     return NextResponse.json(
-      { error: "Social Listening requires Growth or Enterprise plan" },
+      { error: "Social Listening requires Growth, Agency, or Enterprise plan" },
       { status: 403 }
     );
   }

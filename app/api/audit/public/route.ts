@@ -183,7 +183,18 @@ function buildQuickRecommendations(
 }
 
 export async function POST(req: Request) {
-  // Rate limit: 3 audits per IP per day
+  // Validate input FIRST so a typo / invalid URL doesn't burn the user's
+  // daily quota. Rate limit is consumed only when we're about to do real work.
+  const body = await req.json().catch(() => ({}));
+  const parsed = bodySchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Invalid URL" },
+      { status: 400 }
+    );
+  }
+
+  // Rate limit: 3 successful audits per IP per day
   const ip = clientIp(req);
   const limited = rateLimit(`audit-public:${ip}`, 3, 24 * 60 * 60 * 1000);
   if (!limited.ok) {
@@ -193,15 +204,6 @@ export async function POST(req: Request) {
           "You've used your free quick audits for today. Sign up free to run unlimited full audits.",
       },
       { status: 429, headers: { "Retry-After": String(limited.retryAfter) } }
-    );
-  }
-
-  const body = await req.json().catch(() => ({}));
-  const parsed = bodySchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.issues[0]?.message ?? "Invalid URL" },
-      { status: 400 }
     );
   }
 
