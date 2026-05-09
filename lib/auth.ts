@@ -31,49 +31,63 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials, req) {
-        if (!credentials?.email || !credentials?.password) {
+        try {
+          if (!credentials?.email || !credentials?.password) {
+            return null;
+          }
+
+          // CRITICAL: Match the same normalisation the signup route uses.
+          // Without this, signing up as "user@x.com" and logging in as
+          // "User@X.com" (mobile keyboards autocapitalize) fails to find
+          // the user. Trim + lowercase to mirror Zod's pipeline in register.
+          const email = String(credentials.email).trim().toLowerCase();
+          const password = String(credentials.password);
+
+          // Rate limit: 10 failed attempts per IP+email per 15 min.
+          // Wrapped in inner try so a rate-limit hiccup never breaks login.
+          try {
+            const { rateLimit, clientIp } = await import("@/lib/rate-limit");
+            const ip =
+              req && "headers" in req && req.headers
+                ? clientIp(req as unknown as Request)
+                : "unknown";
+            const limited = rateLimit(`login:${ip}:${email}`, 10, 15 * 60 * 1000);
+            if (!limited.ok) {
+              console.warn(`[auth] Rate-limited login attempt ip=${ip} email=${email}`);
+              return null;
+            }
+          } catch (rlErr) {
+            console.warn("[auth] rate-limit check failed (continuing):", rlErr);
+          }
+
+          const user = await prisma.user.findUnique({
+            where: { email },
+          });
+
+          if (!user || !user.password) {
+            return null;
+          }
+
+          const isPasswordValid = await bcrypt.compare(password, user.password);
+
+          if (!isPasswordValid) {
+            return null;
+          }
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            image: user.image,
+          };
+        } catch (err) {
+          // Any unexpected error in authorize gets surfaced by NextAuth as
+          // a Configuration error to the client. Log it (so we can see why)
+          // and return null so the user just sees "Invalid credentials".
+          const { logSafeError } = await import("@/lib/safe-error");
+          logSafeError("[auth/authorize] failed:", err);
           return null;
         }
-
-        // Rate limit: 10 failed attempts per IP+email per 15 min.
-        // Throws on the 11th — NextAuth will surface this as a sign-in error.
-        const { rateLimit, clientIp } = await import("@/lib/rate-limit");
-        const ip =
-          req && "headers" in req && req.headers
-            ? clientIp(req as unknown as Request)
-            : "unknown";
-        const email = String(credentials.email).toLowerCase();
-        const limited = rateLimit(`login:${ip}:${email}`, 10, 15 * 60 * 1000);
-        if (!limited.ok) {
-          console.warn(`[auth] Rate-limited login attempt ip=${ip} email=${email}`);
-          // Returning null gives a generic "invalid credentials" — better
-          // than throwing because we don't want to leak that an account exists.
-          return null;
-        }
-
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string },
-        });
-
-        if (!user || !user.password) {
-          return null;
-        }
-
-        const isPasswordValid = await bcrypt.compare(
-          credentials.password as string,
-          user.password
-        );
-
-        if (!isPasswordValid) {
-          return null;
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          image: user.image,
-        };
       },
     }),
   ],
