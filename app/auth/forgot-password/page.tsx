@@ -1,11 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
-import { Loader2, BarChart3, ArrowLeft } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { Loader2, ArrowLeft } from "lucide-react";
+import { BrandLogo } from "@/components/brand-logo";
 
-export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState("");
+function ForgotPasswordInner() {
+  const searchParams = useSearchParams();
+  const prefilledEmail = searchParams.get("email") ?? "";
+  const [email, setEmail] = useState(prefilledEmail);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,11 +39,8 @@ export default function ForgotPasswordPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-6 py-12">
       <div className="w-full max-w-md">
-        <Link href="/" className="flex items-center gap-2 mb-8 text-slate-700 hover:text-indigo-600 transition-colors">
-          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-            <BarChart3 className="h-5 w-5 text-white" />
-          </div>
-          <span className="font-bold text-lg">BlockBoost</span>
+        <Link href="/" className="inline-block mb-8">
+          <BrandLogo size="md" />
         </Link>
 
         <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-sm">
@@ -52,7 +53,7 @@ export default function ForgotPasswordPage() {
               </p>
               <Link
                 href="/auth/login"
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-amber-600 hover:text-amber-700"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
                 Back to login
@@ -72,7 +73,7 @@ export default function ForgotPasswordPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                     placeholder="you@example.com"
                   />
                 </div>
@@ -80,7 +81,7 @@ export default function ForgotPasswordPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg py-2.5 text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-lg py-2.5 text-sm disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                   Send reset link
@@ -98,5 +99,13 @@ export default function ForgotPasswordPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ForgotPasswordPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading…</div>}>
+      <ForgotPasswordInner />
+    </Suspense>
   );
 }

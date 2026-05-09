@@ -20,6 +20,7 @@ export default function SignupPage() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState("");
   const [googleEnabled, setGoogleEnabled] = useState(false);
+  const [accountExistsEmail, setAccountExistsEmail] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -45,6 +46,7 @@ export default function SignupPage() {
     }
 
     setIsLoading(true);
+    setAccountExistsEmail(null);
 
     try {
       const res = await fetch("/api/auth/register", {
@@ -56,6 +58,13 @@ export default function SignupPage() {
       const data = await res.json();
 
       if (!res.ok) {
+        // Friendly UX for the most common case: account already exists.
+        // Surface a panel with "Sign in" and "Forgot password" links
+        // pre-populated with this email, instead of a generic toast.
+        if (res.status === 409) {
+          setAccountExistsEmail(formData.email);
+          return;
+        }
         toast.error(data.error || "Registration failed. Please try again.");
         return;
       }
@@ -141,6 +150,43 @@ export default function SignupPage() {
             <h1 className="text-2xl font-bold text-slate-900 mb-2">Create your account</h1>
             <p className="text-slate-500">Start your 14-day free trial. No credit card required.</p>
           </div>
+
+          {accountExistsEmail && (
+            <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-5">
+              <h2 className="text-sm font-bold text-amber-900 mb-1">
+                You already have an account
+              </h2>
+              <p className="text-sm text-amber-800 mb-4">
+                We found an existing BlockBoost account for{" "}
+                <strong>{accountExistsEmail}</strong>. Please sign in to continue.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Link
+                  href={`/auth/login?email=${encodeURIComponent(accountExistsEmail)}`}
+                  className="flex-1"
+                >
+                  <Button className="w-full h-10 bg-amber-500 hover:bg-amber-600 text-white">
+                    Sign in instead
+                  </Button>
+                </Link>
+                <Link
+                  href={`/auth/forgot-password?email=${encodeURIComponent(accountExistsEmail)}`}
+                  className="flex-1"
+                >
+                  <Button variant="outline" className="w-full h-10 border-amber-300 text-amber-700 hover:bg-amber-100">
+                    Forgot password?
+                  </Button>
+                </Link>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAccountExistsEmail(null)}
+                className="mt-3 text-xs text-amber-700 hover:text-amber-900 underline"
+              >
+                Use a different email
+              </button>
+            </div>
+          )}
 
           {googleEnabled && (
             <>
