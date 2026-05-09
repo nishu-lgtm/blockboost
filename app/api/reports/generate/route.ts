@@ -79,8 +79,26 @@ export async function POST(req: NextRequest) {
   const start = new Date(startDate);
   const end = new Date(endDate);
 
-  // 1. Compile data
-  const reportData = await compileReportData(projectId, start, end);
+  // 1. Compile data — throws "NO_SCAN_DATA" if the project has zero mentions
+  //    in both the current and previous periods, so we can return a clean
+  //    422 instead of producing a misleading 0%-everywhere report.
+  let reportData;
+  try {
+    reportData = await compileReportData(projectId, start, end);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.startsWith("NO_SCAN_DATA")) {
+      return NextResponse.json(
+        {
+          error:
+            "This project has no scan data yet. Open the AI Visibility page and run a scan, then try generating the report again.",
+          code: "NO_SCAN_DATA",
+        },
+        { status: 422 }
+      );
+    }
+    throw err;
+  }
 
   // 2. Fetch branding (ENTERPRISE users)
   const branding = await prisma.reportBranding.findUnique({ where: { userId } });

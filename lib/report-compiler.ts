@@ -300,6 +300,16 @@ export async function compileReportData(
     }),
   ]);
 
+  // ── 2b. Refuse to generate a misleading 0%-everywhere report when no
+  //         scan has ever produced data. The caller (UI / API) should detect
+  //         this and prompt the user to run a scan first instead of showing
+  //         a "0% mention rate" report that's actually "no data".
+  if (currentMentions.length === 0 && prevMentions.length === 0) {
+    throw new Error(
+      "NO_SCAN_DATA: This project has no scan results yet. Run a scan from /dashboard/ai-visibility before generating a report."
+    );
+  }
+
   // ── 3. Overall rates ──────────────────────────────────────────────────────
   const overallMentionRate = safeDivPct(
     currentMentions.filter(m => m.brandMentioned).length,

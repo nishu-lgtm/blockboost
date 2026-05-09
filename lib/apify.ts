@@ -126,17 +126,18 @@ function normalizeResult(
 
 /**
  * Run the ChatGPT / OpenAI scraper on Apify.
- * Actor: apify/chatgpt-scraper
+ * Actor: tri_angle/gpt-search (265k+ runs, the most battle-tested public
+ * ChatGPT scraper on Apify. Takes a `prompts` array, returns one item
+ * per prompt with the AI-generated text.)
  */
 export async function runChatGPTScraper(
   prompts: string[]
 ): Promise<ScraperResult[]> {
   if (prompts.length === 0) return [];
   try {
-    const items = await runActor("apify/chatgpt-scraper", {
+    const items = await runActor("tri_angle/gpt-search", {
       prompts,
-      model: "gpt-4o",
-      outputSchemaType: "basic",
+      country: "US",
     });
 
     return items.map((item, i) =>
@@ -150,16 +151,18 @@ export async function runChatGPTScraper(
 
 /**
  * Run the Perplexity scraper on Apify.
- * Actor: minoru_k/perplexity-ai-scraper  (most maintained community actor)
+ * Actor: zhorex/perplexity-ai-scraper. Takes `queries` array in "search"
+ * mode and returns one item per query with the answer + citations.
  */
 export async function runPerplexityScraper(
   prompts: string[]
 ): Promise<ScraperResult[]> {
   if (prompts.length === 0) return [];
   try {
-    const items = await runActor("minoru_k/perplexity-ai-scraper", {
+    const items = await runActor("zhorex/perplexity-ai-scraper", {
+      mode: "search",
       queries: prompts,
-      outputCitations: true,
+      maxQueries: prompts.length,
     });
 
     return items.map((item, i) =>
