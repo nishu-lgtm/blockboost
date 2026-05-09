@@ -6,14 +6,24 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { authConfig } from "@/auth.config";
 
+// Only register Google as a provider when credentials are actually configured.
+// Without this guard, clicking "Continue with Google" with empty env vars
+// triggers a NextAuth Configuration error (302 → /auth/error?error=Configuration)
+// which is what users see as "There is a problem with the server configuration."
+const googleProviders = process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+  ? [
+      GoogleProvider({
+        clientId: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      }),
+    ]
+  : [];
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   adapter: PrismaAdapter(prisma),
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
+    ...googleProviders,
     CredentialsProvider({
       name: "credentials",
       credentials: {
