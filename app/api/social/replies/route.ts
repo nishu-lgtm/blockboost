@@ -71,6 +71,18 @@ export async function POST(req: Request) {
       );
     }
 
+    // Per-user AI quota gate
+    const { consumeAiQuota } = await import("@/lib/ai-quota");
+    const quotaResult = consumeAiQuota(session.user.id, user.plan);
+    if (!quotaResult.ok) {
+      return NextResponse.json(
+        {
+          error: `Daily AI quota exceeded for your ${quotaResult.plan} plan (${quotaResult.quota} actions/day).`,
+        },
+        { status: 429, headers: { "Retry-After": String(quotaResult.retryAfterSec ?? 3600) } }
+      );
+    }
+
     const project = opp.project as {
       brandName: string;
       businessCategory: string | null;

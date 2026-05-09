@@ -39,16 +39,19 @@ interface QuickAuditResult {
 }
 
 async function fetchHtml(url: string): Promise<string> {
+  // SSRF guard — refuse private IPs, localhost, cloud metadata endpoints.
+  // Re-validates each redirect target.
+  const { safeFetch } = await import("@/lib/ssrf-guard");
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 10_000);
   try {
-    const res = await fetch(url, {
+    const res = await safeFetch(url, {
       signal: ctrl.signal,
       headers: {
         "User-Agent": "BlockBoost-Quick-Audit/1.0 (+https://blockboost.co)",
         Accept: "text/html",
       },
-      redirect: "follow",
+      maxRedirects: 3,
     });
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}`);
