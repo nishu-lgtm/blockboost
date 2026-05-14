@@ -8,6 +8,7 @@ import { Platform } from "@prisma/client";
 import { runChatGPTScraper, runPerplexityScraper, runGoogleAIOverviewsScraper } from "@/lib/apify";
 import type { ScraperResult } from "@/lib/apify";
 import { extractMentions, extractCitations } from "@/lib/mention-parser";
+import { aggregateRuns, consensusRunsForPlan, type RunResult } from "@/lib/consensus";
 import {
   createScanCompleteAlert,
   createMentionRateDropAlert,
@@ -133,69 +134,102 @@ export async function runScan(
       `(${promptTexts.length} prompts × ${enabledPlatforms.length} platforms)`
   );
 
-  // ── 2. Run all scrapers in parallel ──────────────────────────────────────
-  const scraperJobs = enabledPlatforms.map((platform) =>
-    runScraper(platform, promptTexts)
+  // ── 2. Run scrapers N× per platform for consensus ───────────────────────
+  // N = consensus runs per plan (see lib/consensus.ts). FREE/STARTER → 1,
+  // GROWTH+ → 3. Apify cost scales linearly with N.
+  const N = consensusRunsForPlan(plan);
+  const platformRuns = await Promise.all(
+    enabledPlatforms.map(async (platform) => {
+      const runs = await Promise.all(
+        Array.from({ length: N }, () => runScraper(platform, promptTexts))
+      );
+      return { platform, runs };
+    })
   );
-  const scraperOutputs = await Promise.all(scraperJobs);
 
-  // ── 3. Analyse results and persist to DB ─────────────────────────────────
+  // ── 3. Analyse + aggregate runs, then persist to DB ─────────────────────
   let totalMentions = 0;
   let mentionedCount = 0;
   let totalCitations = 0;
   let mentionsCreated = 0;
+  const promptMap = new Map(project.prompts.map((p) => [p.text, p.id]));
 
-  for (const { platform, results } of scraperOutputs) {
-    if (results.length === 0) continue;
+  for (const { platform, runs } of platformRuns) {
+    if (runs.length === 0) continue;
 
-    // Find the Prompt record for each result (match by text)
-    const promptMap = new Map(project.prompts.map((p) => [p.text, p.id]));
+    for (const promptText of promptTexts) {
+      // Collect all run-results for this (prompt, platform) — match by prompt
+      // text rather than index, since scraper output order isn't guaranteed
+      // identical across runs in flaky/partial-failure cases.
+      const sourceResults = runs
+        .map((run) => run.results.find((r) => r.prompt === promptText))
+        .filter((r): r is NonNullable<typeof r> => !!r);
+      if (sourceResults.length === 0) continue;
 
-    for (const result of results) {
-      totalMentions++;
-
-      // Match prompt text → prompt DB id (fallback: first prompt)
-      const promptId = promptMap.get(result.prompt) ?? project.prompts[0].id;
-
-      // Analyse mention
-      const analysis = await extractMentions(
-        result.response,
-        project.brandName,
-        competitorNames
+      // Convert each ScraperResult → RunResult via extractMentions.
+      // Sentiment is cached in llm-call (12h TTL keyed on context+brand),
+      // so repeated content across runs barely costs anything extra.
+      const runResults: RunResult[] = await Promise.all(
+        sourceResults.map(async (r) => {
+          const analysis = await extractMentions(
+            r.response,
+            project.brandName,
+            competitorNames
+          );
+          return {
+            brandMentioned: analysis.brandMentioned,
+            competitorsMentioned: analysis.competitorsMentioned,
+            sentiment: analysis.sentiment,
+            responseText: r.response,
+            mentionRank: analysis.mentionRank,
+          };
+        })
       );
 
-      if (analysis.brandMentioned) mentionedCount++;
+      const aggregated = aggregateRuns(runResults);
+      totalMentions++;
+      if (aggregated.brandMentioned) mentionedCount++;
 
-      // Persist Mention
+      const promptId = promptMap.get(promptText) ?? project.prompts[0].id;
+
+      // Persist ONE Mention with consensus metadata. We attribute citations
+      // to this single row regardless of which underlying run produced them.
       const mention = await prisma.mention.create({
         data: {
           promptId,
           projectId,
           platform,
-          brandMentioned: analysis.brandMentioned,
-          competitorsMentioned: analysis.competitorsMentioned,
-          sentiment: analysis.sentiment,
-          responseText: result.response,
-          mentionRank: analysis.mentionRank,
+          brandMentioned: aggregated.brandMentioned,
+          competitorsMentioned: aggregated.competitorsMentioned,
+          sentiment: aggregated.sentiment,
+          responseText: aggregated.responseText,
+          mentionRank: aggregated.mentionRank,
+          runCount: aggregated.runCount,
+          consensusRate: aggregated.consensusRate,
+          confidence: aggregated.confidence,
         },
       });
       mentionsCreated++;
 
-      // Extract citations from scraper-provided URLs + inline text URLs
-      const inlineFromText = extractCitations(result.response, project.websiteUrl);
-      const fromScraperUrls = result.citations.map((url) => {
-        const domain = extractCitationDomain(url);
-        const projectDomain = extractCitationDomain(project.websiteUrl);
-        const isOwned = domain === projectDomain || domain.endsWith(`.${projectDomain}`);
-        return { url, domain, isOwned };
-      });
-
-      // Merge (deduplicate by URL)
+      // Citations — union across ALL runs (recall over precision; a URL
+      // cited once is still a real signal). Pick the projectDomain once.
+      const projectDomain = extractCitationDomain(project.websiteUrl);
       const citationMap = new Map<string, { url: string; domain: string; isOwned: boolean }>();
-      for (const c of [...inlineFromText, ...fromScraperUrls]) {
-        if (!citationMap.has(c.url)) citationMap.set(c.url, c);
+      for (const r of sourceResults) {
+        const inline = extractCitations(r.response, project.websiteUrl);
+        for (const c of inline) {
+          if (!citationMap.has(c.url)) citationMap.set(c.url, c);
+        }
+        for (const url of r.citations) {
+          if (citationMap.has(url)) continue;
+          const domain = extractCitationDomain(url);
+          citationMap.set(url, {
+            url,
+            domain,
+            isOwned: domain === projectDomain || domain.endsWith(`.${projectDomain}`),
+          });
+        }
       }
-
       const citations = [...citationMap.values()];
       totalCitations += citations.length;
 
