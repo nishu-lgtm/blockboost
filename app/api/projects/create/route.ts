@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { classifyIntent } from "@/lib/query-intent";
 
 const createProjectSchema = z.object({
   name: z.string().min(1, "Project name is required").max(100),
@@ -67,6 +68,7 @@ export async function POST(req: Request) {
           data: prompts.map((p) => ({
             text: p.text,
             category: p.category,
+            intent: classifyIntent(p.text),
             projectId: project.id,
           })),
         });

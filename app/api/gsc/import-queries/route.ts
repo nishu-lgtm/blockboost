@@ -8,6 +8,7 @@ import {
   isTokenExpired,
 } from "@/lib/google-search-console";
 import OpenAI from "openai";
+import { classifyIntent } from "@/lib/query-intent";
 
 const bodySchema = z.object({
   siteUrl: z.string().min(1),
@@ -198,6 +199,7 @@ export async function POST(req: Request) {
                 projectId,
                 text: q.text,
                 category: q.category,
+                intent: classifyIntent(q.text),
                 gscImpressions: q.impressions,
                 gscClicks: q.clicks,
                 gscPosition: q.position,
