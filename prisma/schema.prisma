@@ -277,6 +277,15 @@ model Mention {
   mentionRank          Int?
   createdAt            DateTime  @default(now())
 
+  // Sprint 2: multi-pass consensus.
+  // runCount       = how many Apify runs produced this aggregated mention (1, 2, or 3)
+  // consensusRate  = fraction of runs that flagged brandMentioned (0.0, 0.33, 0.67, 1.0)
+  // confidence     = "high" (≥2/3 agree + N=3), "medium" (2/3 agree + N=2), "low" (single run)
+  // All nullable so legacy single-shot mentions (runCount==1) don't need migration.
+  runCount             Int?
+  consensusRate        Float?
+  confidence           String?
+
   prompt    Prompt     @relation(fields: [promptId], references: [id], onDelete: Cascade)
   project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
   citations Citation[]
