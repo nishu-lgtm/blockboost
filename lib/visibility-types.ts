@@ -53,6 +53,11 @@ export interface SummaryMetrics {
   bestPlatform: string | null;
   totalCitations: number;
   shareOfVoice: number;
+  // Sprint 2: aggregate confidence of the headline rate.
+  // "high"   = ≥80% of mentions came from multi-pass (N≥3, majority agreement)
+  // "medium" = mixed signal (some single-shot, some multi-pass)
+  // "low"    = mostly single-shot scans (N=1) — UI should warn
+  confidence: "high" | "medium" | "low";
 }
 
 export interface VisibilityData {

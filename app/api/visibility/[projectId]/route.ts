@@ -48,6 +48,7 @@ export interface SummaryMetrics {
   bestPlatform: string | null;
   totalCitations: number;
   shareOfVoice: number;   // 0-100 (brand rate / (brand+competitors average))
+  confidence: "high" | "medium" | "low"; // Sprint 2 multi-pass confidence
 }
 
 export interface VisibilityData {
@@ -135,6 +136,7 @@ export async function GET(
           responseText: true,
           mentionRank: true,
           createdAt: true,
+          confidence: true, // Sprint 2: surface multi-pass confidence in summary
         },
         orderBy: { createdAt: "desc" },
       }),
@@ -193,11 +195,27 @@ export async function GET(
     const shareOfVoice =
       totalVoice > 0 ? Math.round((brandMentioned / totalVoice) * 100) : 0;
 
+    // Aggregate confidence — what fraction of mentions came from multi-pass
+    // scans with majority agreement. Conservative: 'low' wins ties.
+    // (Rule 12 — never overstate trust on data we don't actually have.)
+    let highConf = 0;
+    let lowConf = 0;
+    for (const m of allMentions) {
+      if (m.confidence === "high") highConf++;
+      else if (m.confidence === "low" || m.confidence === null) lowConf++;
+    }
+    const totalRated = allMentions.length || 1;
+    const highShare = highConf / totalRated;
+    const lowShare = lowConf / totalRated;
+    const aggConfidence: "high" | "medium" | "low" =
+      highShare >= 0.8 ? "high" : lowShare >= 0.5 ? "low" : "medium";
+
     const summaryMetrics: SummaryMetrics = {
       overallRate,
       bestPlatform,
       totalCitations: citations,
       shareOfVoice,
+      confidence: aggConfidence,
     };
 
     // ── 4. Mention rate over time (last 30 days) ─────────────────────────

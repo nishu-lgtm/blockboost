@@ -46,6 +46,20 @@ interface QueryInsight {
 }
 
 // ---------------------------------------------------------------------------
+// Confidence label — Sprint 2
+// ---------------------------------------------------------------------------
+
+function confidenceLabel(c: "high" | "medium" | "low"): string {
+  // INTENT: never lie about trust. 'low' = mostly single-pass scans
+  // (FREE/STARTER) — surface explicitly so customers know to upgrade.
+  switch (c) {
+    case "high":   return "✓ high confidence";
+    case "medium": return "± medium confidence";
+    case "low":    return "⚠ low confidence (single-pass)";
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Skeleton helpers
 // ---------------------------------------------------------------------------
 
@@ -265,7 +279,11 @@ export default function AIVisibilityPage() {
                 icon={TrendingUp}
                 iconColor="text-indigo-600"
                 iconBg="bg-indigo-50"
-                sub={data ? `across ${data.mentionRateByPlatform.length} platforms` : undefined}
+                sub={
+                  data
+                    ? `${confidenceLabel(data.summaryMetrics.confidence)} · ${data.mentionRateByPlatform.length} platforms`
+                    : undefined
+                }
               />
               <MetricCard
                 label="Best Platform"
