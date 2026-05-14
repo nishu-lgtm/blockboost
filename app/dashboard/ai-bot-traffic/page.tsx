@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Topbar from "@/components/dashboard/topbar";
 import { CopySnippet } from "@/components/dashboard/copy-snippet";
+import { BotTrafficActions } from "@/components/dashboard/bot-traffic-actions";
 
 const TRACKING_ORIGIN = "https://visibilityiq.vercel.app";
 
@@ -77,6 +78,10 @@ export default async function AiBotTrafficPage() {
         title="AI Bot Traffic"
         description="Track which AI crawlers are visiting your site"
       />
+
+      <div className="flex items-center justify-end px-8 pt-6">
+        <BotTrafficActions />
+      </div>
 
       <main className="flex-1 p-8 space-y-8">
 
