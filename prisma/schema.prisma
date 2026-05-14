@@ -82,6 +82,21 @@ enum SocialReplyTone {
   CASUAL
 }
 
+// User-prompt intent taxonomy. Drives "visibility per intent type" UI
+// and the balanced suggest-prompts generator. Classified by
+// lib/query-intent.ts (rules + GPT fallback).
+//
+// Distinct from Prompt.category (free-form, GSC-derived from
+// app/api/gsc/import-queries) which uses a different vocabulary
+// (awareness / informational / etc).
+enum QueryIntent {
+  DISCOVERY      // "best X brands", "top X tools"
+  COMPARISON     // "X vs Y", "X compared to Y"
+  COMMERCIAL     // "best X under $200", "X pricing", "cheapest X"
+  PROBLEM        // "how to X", "why does X", "X not working"
+  RECOMMENDATION // "what do people recommend for X"
+}
+
 // ─────────────────────────────────────────────────────────────
 // Auth (NextAuth adapter models)
 // ─────────────────────────────────────────────────────────────
@@ -228,11 +243,15 @@ model Competitor {
 }
 
 model Prompt {
-  id             String    @id @default(cuid())
-  text           String    @db.Text
+  id             String       @id @default(cuid())
+  text           String       @db.Text
   category       String
   projectId      String
-  createdAt      DateTime  @default(now())
+  createdAt      DateTime     @default(now())
+
+  // Sprint 1: intent classification. Nullable for existing rows;
+  // backfilled by lib/query-intent.ts in a separate step.
+  intent         QueryIntent?
 
   // Google Search Console data (populated by GSC import)
   gscImpressions Int?
@@ -242,6 +261,8 @@ model Prompt {
 
   project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   mentions Mention[]
+
+  @@index([projectId, intent])
 }
 
 model Mention {
