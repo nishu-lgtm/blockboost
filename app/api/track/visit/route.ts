@@ -1,15 +1,14 @@
 /**
- * POST /api/track/visit
+ * POST /api/track/visit  (preferred — fetch from track.js or server-side call)
+ * GET  /api/track/visit  (pixel fallback for CSP-strict browsers)
  *
- * Public unauthenticated endpoint. Called by public/track.js after the user
- * has installed the snippet on their site. We re-validate the originating
- * User-Agent server-side (the client snippet can lie — never trust its
- * self-reported botName), dedupe by (projectId, botName, url, day), and
- * insert one AiBotVisit row.
+ * Public unauthenticated endpoint. Accepts visits from:
+ *   a) track.js JS snippet running in JS-rendering AI bots (ChatGPT browsing, etc.)
+ *   b) customer's own server middleware forwarding the real request UA + URL
+ *      (recommended — captures non-JS crawlers like GPTBot, ClaudeBot, CCBot)
  *
- * Returns 204 No Content on success — no body, no CORS preflight needed
- * for image-pixel fallback. We support both POST (preferred, fetch) and
- * GET (image-pixel fallback for CSP-strict sites).
+ * The server re-classifies the UA regardless of source. Dedupes by
+ * (projectId, botName, url, day) and inserts one AiBotVisit row.
  */
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -23,51 +22,54 @@ const bodySchema = z.object({
   url: z.string().min(1).max(2048),
 });
 
-// One process-shared salt so hashes are stable across requests but not
-// derivable by callers. Falls back to a constant in dev — never the
-// empty string (which would let an attacker rainbow-table the IP space).
 const IP_SALT = process.env.IP_HASH_SALT ?? "blockboost-dev-salt-2026";
 
-export const dynamic = "force-dynamic"; // never cache visit ingest
+// CORS: this endpoint is called cross-origin from customer sites and their
+// server middleware. Wildcard origin is safe — we store no cookies, never
+// read session data, and all writes are keyed to a projectId we validate.
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
+export const dynamic = "force-dynamic";
+
+// Preflight — browsers send this before the actual POST from track.js.
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
+}
 
 async function handle(projectId: string, url: string, req: Request): Promise<Response> {
   const ua = req.headers.get("user-agent") ?? "";
   const botName = classifyUserAgent(ua);
 
-  // Drop non-bot traffic at the door — never persist a row for it.
-  if (!botName) return new NextResponse(null, { status: 204 });
+  if (!botName) return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
 
-  // Rate limit per IP — protects against a malicious site spamming our
-  // ingest with fabricated visits. 600/IP/hour is generous for any real
-  // crawler workload but kills spammers.
   const ip = clientIp(req);
   const limited = rateLimit(`track-visit:${ip}`, 600, 60 * 60 * 1000);
   if (!limited.ok) {
     return NextResponse.json(
       { error: "Rate limited" },
-      { status: 429, headers: { "Retry-After": String(limited.retryAfter) } }
+      { status: 429, headers: { "Retry-After": String(limited.retryAfter), ...CORS_HEADERS } }
     );
   }
 
-  // Verify project exists. Cheap because projectId is the PK; fail-soft
-  // (no error to client — never leak project existence).
   const projectExists = await prisma.project.findUnique({
     where: { id: projectId },
     select: { id: true },
   });
-  if (!projectExists) return new NextResponse(null, { status: 204 });
+  if (!projectExists) return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
 
   const dedupeKey = buildDedupeKey({ projectId, botName, url });
 
-  // Upsert via createMany({skipDuplicates}) leveraging the @@unique
-  // constraint. This is the cleanest race-free insert pattern Prisma offers.
   try {
     await prisma.aiBotVisit.createMany({
       data: [
         {
           projectId,
           botName,
-          userAgent: ua.slice(0, 2000), // hard cap on stored UA size
+          userAgent: ua.slice(0, 2000),
           url: url.slice(0, 2048),
           ipHash: hashIp(ip, IP_SALT),
           dedupeKey,
@@ -77,31 +79,27 @@ async function handle(projectId: string, url: string, req: Request): Promise<Res
     });
   } catch (err) {
     logSafeError("[track/visit] insert failed", err);
-    // Still return 204 — never let a 5xx propagate to the customer's site
-    // where it would appear in their browser console.
   }
 
-  return new NextResponse(null, { status: 204 });
+  return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
 }
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const parsed = bodySchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid body" }, { status: 400, headers: CORS_HEADERS });
   }
   return handle(parsed.data.projectId, parsed.data.url, req);
 }
 
-// Image-pixel fallback: GET /api/track/visit?p=<projectId>&u=<url>
-// For sites with strict CSP that block fetch but allow <img>.
 export async function GET(req: Request) {
   const u = new URL(req.url);
   const projectId = u.searchParams.get("p") ?? "";
   const url = u.searchParams.get("u") ?? "";
   const parsed = bodySchema.safeParse({ projectId, url });
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid params" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid params" }, { status: 400, headers: CORS_HEADERS });
   }
   return handle(parsed.data.projectId, parsed.data.url, req);
 }

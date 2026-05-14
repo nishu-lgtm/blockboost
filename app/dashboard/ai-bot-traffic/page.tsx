@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { Activity, Code2 } from "lucide-react";
+import { Activity, Code2, AlertTriangle, Server } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Topbar from "@/components/dashboard/topbar";
@@ -10,14 +10,20 @@ import { BotTrafficActions } from "@/components/dashboard/bot-traffic-actions";
 
 const TRACKING_ORIGIN = "https://visibilityiq.vercel.app";
 
+// Synthetic visit URL inserted by "Test snippet". Excluded from counts and
+// marked with a [test] badge in the table so it doesn't mislead analytics.
+const TEST_URL = "https://blockboost-snippet-test.local/verify";
+
 const BOT_COLORS: Record<string, string> = {
   GPTBot:            "bg-green-100 text-green-800 border-green-200",
   "OAI-SearchBot":   "bg-teal-100 text-teal-800 border-teal-200",
+  "ChatGPT-User":    "bg-emerald-100 text-emerald-800 border-emerald-200",
   ClaudeBot:         "bg-amber-100 text-amber-800 border-amber-200",
   PerplexityBot:     "bg-purple-100 text-purple-800 border-purple-200",
   Bytespider:        "bg-orange-100 text-orange-800 border-orange-200",
   CCBot:             "bg-blue-100 text-blue-800 border-blue-200",
   "Google-Extended": "bg-red-100 text-red-800 border-red-200",
+  OTHER:             "bg-slate-200 text-slate-700 border-slate-300",
 };
 const DEFAULT_BOT_COLOR = "bg-slate-100 text-slate-700 border-slate-200";
 
@@ -29,8 +35,29 @@ function formatDate(d: Date) {
   return d.toISOString().slice(0, 16).replace("T", " ") + " UTC";
 }
 
-function buildSnippet(projectId: string) {
+function buildJsSnippet(projectId: string) {
   return `<script src="${TRACKING_ORIGIN}/track.js" data-project="${projectId}" async></script>`;
+}
+
+function buildServerSnippet(projectId: string) {
+  return [
+    "// middleware.ts — add to your Next.js site root",
+    "// Captures all AI crawlers, including those that don't run JavaScript.",
+    "import { NextResponse } from 'next/server'",
+    "import type { NextRequest } from 'next/server'",
+    "",
+    "export function middleware(request: NextRequest) {",
+    "  const ua = request.headers.get('user-agent') ?? ''",
+    "  const url = request.nextUrl.href",
+    "  fetch(",
+    `    '${TRACKING_ORIGIN}/api/track/visit?p=${projectId}&u=' + encodeURIComponent(url),`,
+    "    { headers: { 'user-agent': ua } }",
+    "  ).catch(() => {})",
+    "  return NextResponse.next()",
+    "}",
+    "",
+    "export const config = { matcher: '/((?!_next|favicon\\.ico).*)' }",
+  ].join("\n");
 }
 
 export default async function AiBotTrafficPage() {
@@ -50,13 +77,18 @@ export default async function AiBotTrafficPage() {
   const projectIds = projects.map((p) => p.id);
   const projectMap = Object.fromEntries(projects.map((p) => [p.id, p.brandName]));
 
+  // Exclude the synthetic test row from all counts so the dashboard
+  // reflects real bot traffic only.
+  const realVisitsWhere = { projectId: { in: projectIds }, url: { not: TEST_URL } };
+
   const [botCounts, recentVisits, uniqueUrls] = await Promise.all([
     prisma.aiBotVisit.groupBy({
       by: ["botName"],
-      where: { projectId: { in: projectIds } },
+      where: realVisitsWhere,
       _count: { id: true },
       orderBy: { _count: { id: "desc" } },
     }),
+    // Include test rows in the table (they get a badge) but put them last.
     prisma.aiBotVisit.findMany({
       where: { projectId: { in: projectIds } },
       orderBy: { visitedAt: "desc" },
@@ -64,7 +96,7 @@ export default async function AiBotTrafficPage() {
       select: { id: true, botName: true, url: true, visitedAt: true, projectId: true },
     }),
     prisma.aiBotVisit.findMany({
-      where: { projectId: { in: projectIds } },
+      where: realVisitsWhere,
       select: { url: true },
       distinct: ["url"],
     }),
@@ -79,11 +111,12 @@ export default async function AiBotTrafficPage() {
         description="Track which AI crawlers are visiting your site"
       />
 
-      <div className="flex items-center justify-end px-8 pt-6">
-        <BotTrafficActions />
-      </div>
+      <main className="flex-1 p-8 space-y-6">
 
-      <main className="flex-1 p-8 space-y-8">
+        {/* Actions row — sits flush inside main, same padding */}
+        <div className="flex justify-end">
+          <BotTrafficActions />
+        </div>
 
         {/* ── Setup snippet ── */}
         <Card>
@@ -91,22 +124,68 @@ export default async function AiBotTrafficPage() {
             <div className="flex items-center gap-2">
               <Code2 className="h-4 w-4 text-indigo-500" />
               <CardTitle className="text-base font-semibold text-slate-900">
-                Install tracking snippet
+                Install tracking
               </CardTitle>
             </div>
-            <p className="text-sm text-slate-500 mt-1">
-              Paste this tag into the <code className="bg-slate-100 px-1 rounded text-xs">&lt;head&gt;</code> of every page you want to monitor. Bot visits will appear below automatically — no further setup needed.
-            </p>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {projects.map((project) => (
-              <div key={project.id}>
-                {projects.length > 1 && (
-                  <p className="text-xs font-medium text-slate-500 mb-1.5">{project.brandName}</p>
-                )}
-                <CopySnippet snippet={buildSnippet(project.id)} />
+          <CardContent className="space-y-6">
+
+            {/* Warning banner */}
+            <div className="flex gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+              <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="text-sm text-amber-800">
+                <span className="font-semibold">Most AI crawlers don&apos;t run JavaScript.</span>
+                {" "}GPTBot, ClaudeBot, CCBot, and Bytespider fetch raw HTML only — they won&apos;t trigger
+                the JS snippet. Use <span className="font-semibold">Option 2</span> (server-side) to capture all bots.
               </div>
-            ))}
+            </div>
+
+            {/* Option 1 — JS snippet */}
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-700">Option 1 — JavaScript snippet</p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Works for JS-rendering bots (ChatGPT browsing, Perplexity live search). Paste into{" "}
+                  <code className="bg-slate-100 px-1 rounded">&lt;head&gt;</code>.
+                </p>
+              </div>
+              {projects.map((project) => (
+                <div key={project.id}>
+                  {projects.length > 1 && (
+                    <p className="text-xs font-medium text-slate-500 mb-1.5">{project.brandName}</p>
+                  )}
+                  <CopySnippet snippet={buildJsSnippet(project.id)} />
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="flex-1 border-t border-slate-200" />
+              <span className="text-xs text-slate-400 font-medium">recommended</span>
+              <div className="flex-1 border-t border-slate-200" />
+            </div>
+
+            {/* Option 2 — server-side */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Server className="h-3.5 w-3.5 text-indigo-500" />
+                <p className="text-sm font-semibold text-slate-700">Option 2 — Server-side middleware</p>
+              </div>
+              <p className="text-xs text-slate-500">
+                Add to your Next.js <code className="bg-slate-100 px-1 rounded">middleware.ts</code>. Forwards the
+                real User-Agent server-side — captures every AI crawler regardless of JS support.
+                Works with Express, Remix, and other frameworks too (same fetch call pattern).
+              </p>
+              {projects.map((project) => (
+                <div key={project.id}>
+                  {projects.length > 1 && (
+                    <p className="text-xs font-medium text-slate-500 mb-1.5">{project.brandName}</p>
+                  )}
+                  <CopySnippet snippet={buildServerSnippet(project.id)} />
+                </div>
+              ))}
+            </div>
+
           </CardContent>
         </Card>
 
@@ -177,7 +256,7 @@ export default async function AiBotTrafficPage() {
                 <Activity className="h-8 w-8 opacity-40" />
                 <p className="text-sm font-medium">No bot visits recorded yet</p>
                 <p className="text-xs max-w-xs text-center">
-                  Install the snippet above on your site. AI crawlers like GPTBot and ClaudeBot will appear here as they visit your pages.
+                  Install the server-side middleware above to start capturing AI crawler traffic.
                 </p>
               </div>
             ) : (
@@ -194,31 +273,44 @@ export default async function AiBotTrafficPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {recentVisits.map((visit) => (
-                      <tr key={visit.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-6 py-3">
-                          <Badge variant="outline" className={botBadgeClass(visit.botName)}>
-                            {visit.botName}
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-3">
-                          <span
-                            className="text-slate-700 font-mono text-xs max-w-xs block truncate"
-                            title={visit.url}
-                          >
-                            {visit.url}
-                          </span>
-                        </td>
-                        {projects.length > 1 && (
-                          <td className="px-6 py-3 text-slate-500 text-xs">
-                            {projectMap[visit.projectId] ?? visit.projectId}
+                    {recentVisits.map((visit) => {
+                      const isTest = visit.url === TEST_URL;
+                      return (
+                        <tr
+                          key={visit.id}
+                          className={`hover:bg-slate-50 transition-colors ${isTest ? "opacity-60" : ""}`}
+                        >
+                          <td className="px-6 py-3">
+                            <Badge variant="outline" className={botBadgeClass(visit.botName)}>
+                              {visit.botName}
+                            </Badge>
                           </td>
-                        )}
-                        <td className="px-6 py-3 text-slate-400 text-xs whitespace-nowrap">
-                          {formatDate(visit.visitedAt)}
-                        </td>
-                      </tr>
-                    ))}
+                          <td className="px-6 py-3">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="text-slate-700 font-mono text-xs max-w-xs block truncate"
+                                title={visit.url}
+                              >
+                                {visit.url}
+                              </span>
+                              {isTest && (
+                                <span className="shrink-0 text-xs font-medium px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200">
+                                  test
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          {projects.length > 1 && (
+                            <td className="px-6 py-3 text-slate-500 text-xs">
+                              {projectMap[visit.projectId] ?? visit.projectId}
+                            </td>
+                          )}
+                          <td className="px-6 py-3 text-slate-400 text-xs whitespace-nowrap">
+                            {formatDate(visit.visitedAt)}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

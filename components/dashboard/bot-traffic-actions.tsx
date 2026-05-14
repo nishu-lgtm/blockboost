@@ -5,16 +5,30 @@ import { useRouter } from "next/navigation";
 import { RefreshCw, FlaskConical, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+// sessionStorage key — persists the verified state across router.refresh()
+// (which remounts this component) but resets when the tab is closed.
+const VERIFIED_KEY = "bb-snippet-tested";
+
+function readVerified(): boolean {
+  try {
+    return sessionStorage.getItem(VERIFIED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 export function BotTrafficActions() {
   const router = useRouter();
   const [testing, setTesting] = useState(false);
-  const [tested, setTested] = useState(false);
+  // Initialise from sessionStorage so the checkmark survives router.refresh()
+  const [tested, setTested] = useState(readVerified);
   const [refreshing, setRefreshing] = useState(false);
 
   async function handleTest() {
     setTesting(true);
     try {
       await fetch("/api/track/test", { method: "POST" });
+      try { sessionStorage.setItem(VERIFIED_KEY, "1"); } catch { /* private browsing */ }
       setTested(true);
       router.refresh();
     } finally {
@@ -25,7 +39,6 @@ export function BotTrafficActions() {
   function handleRefresh() {
     setRefreshing(true);
     router.refresh();
-    // refresh() has no awaitable signal; reset after a short visual beat
     setTimeout(() => setRefreshing(false), 800);
   }
 
