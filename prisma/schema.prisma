@@ -230,6 +230,7 @@ model Project {
   reports         Report[]
   socialOpportunities SocialOpportunity[]
   socialSettings  SocialSettings?
+  aiBotVisits     AiBotVisit[]
 }
 
 model Competitor {
@@ -394,6 +395,29 @@ model Alert {
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Sprint 8: AI crawler telemetry.
+// Captured by public/track.js → POST /api/track/visit, deduped per
+// (projectId, botName, url, day) so reload spam can't inflate counts.
+// botName is the normalised crawler label (GPTBot, ClaudeBot, etc) —
+// "OTHER" means the UA was tagged "AI-ish" by heuristic but didn't match
+// a known label; "HUMAN" rows are NOT persisted (filtered at ingest).
+model AiBotVisit {
+  id          String   @id @default(cuid())
+  projectId   String
+  botName     String
+  userAgent   String   @db.Text
+  url         String   @db.Text
+  ipHash      String? // optional: hashed for analytics, NOT for tracking individuals
+  visitedAt   DateTime @default(now())
+  dedupeKey   String // sha("projectId|botName|url|YYYY-MM-DD"), see lib/bot-detector
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([dedupeKey])
+  @@index([projectId, visitedAt])
+  @@index([projectId, botName, visitedAt])
 }
 
 // ─────────────────────────────────────────────────────────────
