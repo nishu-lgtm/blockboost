@@ -18,6 +18,7 @@ import {
   ChevronDown,
   Radio,
   BookOpen,
+  Activity,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -36,6 +37,11 @@ const navItems = [
     label: "AI Visibility",
     href: "/dashboard/ai-visibility",
     icon: Eye,
+  },
+  {
+    label: "AI Bot Traffic",
+    href: "/dashboard/ai-bot-traffic",
+    icon: Activity,
   },
   {
     label: "Citations",
