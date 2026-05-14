@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import OpenAI from "openai";
 import { z } from "zod";
+import { logSafeError } from "@/lib/safe-error";
 
 const bodySchema = z.object({
   messages: z.array(
@@ -504,7 +505,7 @@ export async function POST(req: Request) {
       },
     });
   } catch (error) {
-    console.error("[copilot/chat] error:", error);
+    logSafeError("[copilot/chat] error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

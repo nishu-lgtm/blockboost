@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import OpenAI from "openai";
 import type { BriefContent, BriefQualityScore } from "@/lib/brief-types";
+import { logSafeError } from "@/lib/safe-error";
 
 const bodySchema = z.object({
   projectId: z.string().min(1),
@@ -294,7 +295,7 @@ export async function POST(req: Request) {
       try {
         briefContent = await generateWithOpenAI(promptText, project.brandName, project.websiteUrl, competitorNames);
       } catch (err) {
-        console.warn("[briefs/generate] OpenAI failed, using fallback:", err);
+        logSafeError("[briefs/generate] OpenAI failed, using fallback:", err);
         briefContent = buildFallbackBrief(promptText, project.brandName, competitorNames);
       }
     } else {
@@ -357,7 +358,7 @@ export async function POST(req: Request) {
       cached: false,
     });
   } catch (error) {
-    console.error("Brief generation error:", error);
+    logSafeError("Brief generation error:", error);
     return NextResponse.json({ error: "Failed to generate brief." }, { status: 500 });
   }
 }

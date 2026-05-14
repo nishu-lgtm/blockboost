@@ -3,6 +3,9 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Platform } from "@prisma/client";
 import OpenAI from "openai";
+import { tierForDomain } from "@/lib/source-tiers";
+import { logSafeError } from "@/lib/safe-error";
+import { consumeAiQuota } from "@/lib/ai-quota";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -72,34 +75,34 @@ const PLATFORM_LABELS: Record<Platform, string> = {
   GOOGLE_AI_OVERVIEWS: "Google AIO",
 };
 
-const AUTHORITATIVE_DOMAINS = new Set([
-  "wikipedia.org", "reuters.com", "bbc.com", "nytimes.com", "bloomberg.com",
-  "wsj.com", "theguardian.com", "techcrunch.com", "forbes.com", "wired.com",
-  "harvard.edu", "mit.edu", "gov", "cdc.gov", "nih.gov",
-]);
-
-const REVIEW_DOMAINS = new Set([
-  "g2.com", "capterra.com", "trustpilot.com", "getapp.com", "producthunt.com",
-  "softwareadvice.com", "crozdesk.com", "gartner.com", "sitejabber.com",
-]);
-
-const SOCIAL_DOMAINS = new Set([
-  "reddit.com", "twitter.com", "x.com", "linkedin.com", "facebook.com",
-  "quora.com", "stackoverflow.com", "dev.to", "medium.com", "substack.com",
-]);
-
+// Maps the unified source-tier taxonomy to the legacy ThirdPartyRow category
+// strings used downstream. Keeps citations UI stable while sharing the
+// domain list with lib/source-tiers.ts (single source of truth).
 const NEWS_DOMAINS = new Set([
   "techcrunch.com", "venturebeat.com", "theverge.com", "engadget.com",
-  "zdnet.com", "infoq.com", "hackernews.com", "ycombinator.com",
+  "zdnet.com", "infoq.com", "wired.com", "arstechnica.com",
 ]);
 
 function classifyDomain(domain: string): ThirdPartyRow["category"] {
-  const d = domain.toLowerCase();
-  if ([...AUTHORITATIVE_DOMAINS].some((a) => d.includes(a))) return "authoritative";
-  if ([...REVIEW_DOMAINS].some((r) => d.includes(r))) return "review";
-  if ([...SOCIAL_DOMAINS].some((s) => d.includes(s))) return "social";
-  if ([...NEWS_DOMAINS].some((n) => d.includes(n))) return "news";
-  return "other";
+  const d = domain.toLowerCase().replace(/^www\./, "");
+  // News carved out from "premium" before tier lookup, so the category
+  // surface stays informative for users skimming citations.
+  if ([...NEWS_DOMAINS].some((n) => d === n || d.endsWith(`.${n}`))) return "news";
+
+  const tier = tierForDomain(d);
+  switch (tier) {
+    case "premium":
+    case "authority":
+      return "authoritative";
+    case "marketplace":
+      return "review";
+    case "forum":
+    case "social":
+      return "social";
+    case "low":
+    default:
+      return "other";
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -202,14 +205,30 @@ export async function GET(
       Math.max(7, parseInt(url.searchParams.get("days") ?? "30", 10))
     );
 
-    // Verify ownership
+    // Verify ownership + load plan for AI-quota gate (hallucination check below
+    // calls OpenAI per page view — without the gate one user could rack up cost).
     const project = await prisma.project.findFirst({
       where: { id: projectId, userId: session.user.id },
-      select: { id: true, brandName: true, websiteUrl: true },
+      select: {
+        id: true,
+        brandName: true,
+        websiteUrl: true,
+        user: { select: { plan: true } },
+      },
     });
 
     if (!project) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+
+    const quotaResult = consumeAiQuota(session.user.id, project.user.plan);
+    if (!quotaResult.ok) {
+      return NextResponse.json(
+        {
+          error: `Daily AI quota exceeded for your ${quotaResult.plan} plan (${quotaResult.quota} actions/day).`,
+        },
+        { status: 429, headers: { "Retry-After": String(quotaResult.retryAfterSec ?? 3600) } }
+      );
     }
 
     const since = new Date();
@@ -355,7 +374,7 @@ export async function GET(
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error("Citations API error:", error);
+    logSafeError("Citations API error:", error);
     return NextResponse.json({ error: "Failed to load citation data." }, { status: 500 });
   }
 }

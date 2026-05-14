@@ -3,6 +3,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import OpenAI from "openai";
+import { logSafeError } from "@/lib/safe-error";
 import type {
   AuditResult,
   CrawlabilitySection,
@@ -686,7 +687,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error("Audit run error:", error);
+    logSafeError("Audit run error:", error);
     return NextResponse.json({ error: "Audit failed. Please try again." }, { status: 500 });
   }
 }

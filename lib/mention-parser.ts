@@ -7,7 +7,8 @@
  *   - Citations (URLs) and whether they are owned by the project
  */
 
-import OpenAI from "openai";
+import { z } from "zod";
+import { llmCall, isLlmAvailable } from "@/lib/llm-call";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -100,16 +101,8 @@ function computeMentionRank(
 }
 
 // ---------------------------------------------------------------------------
-// OpenAI sentiment analysis
+// OpenAI sentiment analysis (via lib/llm-call wrapper)
 // ---------------------------------------------------------------------------
-
-let _openai: OpenAI | null = null;
-
-function getOpenAI(): OpenAI | null {
-  if (!process.env.OPENAI_API_KEY) return null;
-  if (!_openai) _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  return _openai;
-}
 
 /** Extract a ~300-char window around the first brand mention for context. */
 function extractContext(text: string, brandName: string): string {
@@ -121,14 +114,16 @@ function extractContext(text: string, brandName: string): string {
   return text.slice(start, end);
 }
 
+const sentimentSchema = z.object({
+  sentiment: z.enum(["POSITIVE", "NEUTRAL", "NEGATIVE"]),
+});
+
 async function classifySentiment(
   responseText: string,
   brandName: string
 ): Promise<"POSITIVE" | "NEUTRAL" | "NEGATIVE"> {
-  const openai = getOpenAI();
-
-  // Fallback: simple keyword heuristic when OpenAI is unavailable
-  if (!openai) {
+  // Cheap heuristic fallback — used when no API key, moderation block, etc.
+  const heuristic = (): "POSITIVE" | "NEUTRAL" | "NEGATIVE" => {
     const ctx = extractContext(responseText, brandName).toLowerCase();
     const positiveWords = ["recommend", "best", "great", "excellent", "top", "leading", "trusted"];
     const negativeWords = ["avoid", "bad", "poor", "worst", "not recommend", "issues", "problem"];
@@ -137,37 +132,29 @@ async function classifySentiment(
     if (posHits > negHits) return "POSITIVE";
     if (negHits > posHits) return "NEGATIVE";
     return "NEUTRAL";
-  }
+  };
 
-  try {
-    const context = extractContext(responseText, brandName);
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      response_format: { type: "json_object" },
-      messages: [
-        {
-          role: "system",
-          content:
-            'You are a sentiment classifier. Given a text excerpt from an AI assistant response and a brand name, classify the sentiment toward that brand as POSITIVE, NEUTRAL, or NEGATIVE. Respond with JSON: { "sentiment": "POSITIVE" | "NEUTRAL" | "NEGATIVE" }',
-        },
-        {
-          role: "user",
-          content: `Brand: ${brandName}\n\nText excerpt:\n${context}`,
-        },
-      ],
-      max_tokens: 20,
-      temperature: 0,
-    });
+  if (!isLlmAvailable()) return heuristic();
 
-    const raw = completion.choices[0]?.message?.content ?? "{}";
-    const parsed = JSON.parse(raw) as { sentiment?: string };
-    const s = parsed.sentiment?.toUpperCase();
-    if (s === "POSITIVE" || s === "NEGATIVE") return s;
-    return "NEUTRAL";
-  } catch (err) {
-    console.warn("[mention-parser] Sentiment classification failed, defaulting to NEUTRAL:", err);
-    return "NEUTRAL";
-  }
+  const context = extractContext(responseText, brandName);
+  const result = await llmCall({
+    feature: "mention-parser:sentiment",
+    model: "fast",
+    schema: sentimentSchema,
+    fallback: { sentiment: heuristic() },
+    cacheTtlSec: 12 * 60 * 60,
+    temperature: 0,
+    maxTokens: 20,
+    messages: [
+      {
+        role: "system",
+        content:
+          'You are a sentiment classifier. Given a text excerpt from an AI assistant response and a brand name, classify the sentiment toward that brand as POSITIVE, NEUTRAL, or NEGATIVE. Respond with JSON: { "sentiment": "POSITIVE" | "NEUTRAL" | "NEGATIVE" }.',
+      },
+      { role: "user", content: `Brand: ${brandName}\n\nText excerpt:\n${context}` },
+    ],
+  });
+  return result.data.sentiment;
 }
 
 // ---------------------------------------------------------------------------
