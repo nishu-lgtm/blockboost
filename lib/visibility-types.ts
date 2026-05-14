@@ -35,6 +35,19 @@ export interface SentimentBreakdown {
   negative: number;
 }
 
+// Sprint 1 step 5: mention rate per QueryIntent bucket.
+// `intent` is the QueryIntent enum value (DISCOVERY | COMPARISON | …).
+// `commercialWeight` mirrors INTENT_COMMERCIAL_WEIGHT for UI sorting +
+// the "high commercial-intent visibility" KPI.
+export interface IntentRate {
+  intent: string;
+  label: string;
+  rate: number;          // 0-100, percent
+  mentionCount: number;  // brand mentions in this bucket
+  totalCount: number;    // total mentions in this bucket
+  commercialWeight: number; // 0-1, used to weight the headline KPI
+}
+
 export interface SummaryMetrics {
   overallRate: number;
   bestPlatform: string | null;
@@ -50,6 +63,7 @@ export interface VisibilityData {
   summaryMetrics: SummaryMetrics;
   mentionRateByPlatform: PlatformRate[];
   mentionRateOverTime: TimeSeriesPoint[];
+  mentionRateByIntent: IntentRate[];
   promptBreakdown: PromptRow[];
   sentimentBreakdown: SentimentBreakdown;
 }

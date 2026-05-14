@@ -371,6 +371,55 @@ export default function AIVisibilityPage() {
           </CardContent>
         </Card>
 
+        {/* ── Visibility by intent type ─────────────────────────────── */}
+        <Card className="border-slate-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold text-slate-800">
+              Visibility by Intent
+            </CardTitle>
+            <p className="text-xs text-slate-500">
+              How often your brand is cited per query type — commercial-intent
+              visibility correlates with revenue.
+            </p>
+          </CardHeader>
+          <CardContent>
+            {loadingData ? (
+              <ChartSkeleton height={180} />
+            ) : (data?.mentionRateByIntent ?? []).length === 0 ? (
+              <p className="text-sm text-slate-400 py-6 text-center">
+                No data yet — run a scan to populate intent buckets.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {(data?.mentionRateByIntent ?? []).map((row) => (
+                  <div key={row.intent}>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2 text-sm">
+                        {row.intent === "COMMERCIAL" && <span aria-label="revenue-correlated">💰</span>}
+                        <span className="font-medium text-slate-700">{row.label}</span>
+                        <span className="text-xs text-slate-400">
+                          ({row.mentionCount}/{row.totalCount})
+                        </span>
+                      </div>
+                      <span className="text-sm font-bold text-slate-900">{row.rate}%</span>
+                    </div>
+                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className={
+                          row.intent === "COMMERCIAL"
+                            ? "h-full bg-amber-500 rounded-full transition-all"
+                            : "h-full bg-indigo-500 rounded-full transition-all"
+                        }
+                        style={{ width: `${row.rate}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* ── Prompt breakdown table ────────────────────────────────── */}
         <Card className="border-slate-200">
           <CardHeader className="pb-2">

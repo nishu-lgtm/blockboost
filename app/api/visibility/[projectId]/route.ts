@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Platform, Sentiment } from "@prisma/client";
+import { Platform, Sentiment, type QueryIntent } from "@prisma/client";
+import { INTENT_LABELS, INTENT_COMMERCIAL_WEIGHT } from "@/lib/query-intent";
+import type { IntentRate } from "@/lib/visibility-types";
 
 // ---------------------------------------------------------------------------
 // Types returned to the client
@@ -56,6 +58,7 @@ export interface VisibilityData {
   summaryMetrics: SummaryMetrics;
   mentionRateByPlatform: PlatformRate[];
   mentionRateOverTime: TimeSeriesPoint[];
+  mentionRateByIntent: IntentRate[];
   promptBreakdown: PromptRow[];
   sentimentBreakdown: SentimentBreakdown;
 }
@@ -289,6 +292,35 @@ export async function GET(
     const lastMention = allMentions[0]; // sorted desc by createdAt
     const lastScanAt = lastMention?.createdAt.toISOString() ?? null;
 
+    // ── 8. Mention rate per QueryIntent (Sprint 1 step 5) ─────────────────
+    // Each Prompt has an `intent` set at insert time. We bucket the
+    // mentions by intent and compute a per-bucket rate. Empty buckets
+    // (no prompts in that intent yet) are omitted from the array so the
+    // UI can show "no data" cleanly.
+    const promptIntentById = new Map<string, QueryIntent | null>(
+      project.prompts.map((p) => [p.id, p.intent])
+    );
+    const intentBuckets = new Map<QueryIntent, { mentioned: number; total: number }>();
+    for (const m of allMentions) {
+      if (!m.promptId) continue;
+      const intent = promptIntentById.get(m.promptId);
+      if (!intent) continue;
+      const cur = intentBuckets.get(intent) ?? { mentioned: 0, total: 0 };
+      cur.total++;
+      if (m.brandMentioned) cur.mentioned++;
+      intentBuckets.set(intent, cur);
+    }
+    const mentionRateByIntent: IntentRate[] = [...intentBuckets.entries()]
+      .map(([intent, counts]) => ({
+        intent,
+        label: INTENT_LABELS[intent],
+        rate: counts.total > 0 ? Math.round((counts.mentioned / counts.total) * 100) : 0,
+        mentionCount: counts.mentioned,
+        totalCount: counts.total,
+        commercialWeight: INTENT_COMMERCIAL_WEIGHT[intent],
+      }))
+      .sort((a, b) => b.commercialWeight - a.commercialWeight);
+
     const data: VisibilityData = {
       projectId,
       projectName: project.name,
@@ -297,6 +329,7 @@ export async function GET(
       summaryMetrics,
       mentionRateByPlatform,
       mentionRateOverTime,
+      mentionRateByIntent,
       promptBreakdown,
       sentimentBreakdown,
     };
