@@ -44,8 +44,8 @@
 
 | Service | Status | Needed for |
 |---|---|---|
-| OpenAI credits | ❌ exhausted | Sprint 3, 5, 6, 9 |
-| Supabase pgvector extension | not enabled | Sprint 4 |
+| OpenAI credits | ❌ exhausted (verify `curl ... /v1/embeddings` returns non-429 before starting Sprint 3/4) | Sprint 3, 4, 5, 6, 9 |
+| Supabase pgvector extension | ✅ enabled (2026-05-15) — `vector(1536)` columns supported | Sprint 4 |
 | Apify | ✅ working (3 actors verified) | already in use |
 
 ## Verify baseline before any new work
