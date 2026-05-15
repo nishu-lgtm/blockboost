@@ -104,8 +104,10 @@ export async function findRelevantChunks(
     .sort((a, b) => b.score - a.score)
     .slice(0, topK);
 
+  // Cosine ranges -1..1 but a negative score = "even less relevant than orthogonal",
+  // which we surface as 0/100 since negative percentages confuse users.
   const retrievabilityScore =
-    scored.length > 0 ? Math.round(scored[0].score * 100) : 0;
+    scored.length > 0 ? Math.max(0, Math.round(scored[0].score * 100)) : 0;
 
   return { query: queryText, topChunks: scored, retrievabilityScore };
 }

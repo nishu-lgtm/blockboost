@@ -53,15 +53,18 @@ function SentimentIcon({ direction }: { direction: "improved" | "regressed" }) {
 export function DriftCard({ projectId }: { projectId: string }) {
   const [report, setReport] = useState<DriftReport | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeKey, setActiveKey] = useState<string>("newCitations");
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch(`/api/drift/${projectId}?window=7`);
-      if (res.ok) setReport(await res.json());
-    } catch {
-      // silent
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setReport(await res.json());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load drift");
     } finally {
       setLoading(false);
     }
@@ -75,6 +78,21 @@ export function DriftCard({ projectId }: { projectId: string }) {
         <CardContent className="p-6 flex items-center gap-3 text-slate-400">
           <Loader2 className="h-4 w-4 animate-spin" />
           <span className="text-sm">Detecting drift…</span>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="border-red-200 bg-red-50/40">
+        <CardContent className="p-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-red-700">
+            <span>Couldn&apos;t load drift report ({error})</span>
+          </div>
+          <button onClick={load} className="text-xs text-red-700 underline hover:no-underline">
+            Retry
+          </button>
         </CardContent>
       </Card>
     );

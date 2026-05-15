@@ -40,14 +40,17 @@ export function EntityList({ projectId }: { projectId: string }) {
   const [text, setText] = useState("");
   const [error, setError] = useState("");
   const [lastSummary, setLastSummary] = useState<{ nodesCreated: number; edgesCreated: number } | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadGraph = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const res = await fetch(`/api/entities/${projectId}`);
-      if (res.ok) setGraph(await res.json());
-    } catch (_err) {
-      // silent
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setGraph(await res.json());
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : "Failed to load entity graph");
     } finally {
       setLoading(false);
     }
@@ -127,6 +130,15 @@ export function EntityList({ projectId }: { projectId: string }) {
 
         {/* Graph view */}
         {loading && <p className="text-sm text-slate-400">Loading graph…</p>}
+
+        {loadError && (
+          <div className="rounded-lg border border-red-200 bg-red-50/40 p-3 flex items-center justify-between">
+            <span className="text-sm text-red-700">Couldn&apos;t load entity graph ({loadError})</span>
+            <button onClick={loadGraph} className="text-xs text-red-700 underline hover:no-underline">
+              Retry
+            </button>
+          </div>
+        )}
 
         {!loading && graph && graph.nodes.length === 0 && (
           <p className="text-sm text-slate-500">No entities yet. Paste content above to get started.</p>

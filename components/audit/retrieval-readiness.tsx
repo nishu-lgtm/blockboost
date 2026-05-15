@@ -135,7 +135,7 @@ export function RetrievalReadiness({ projectId }: { projectId: string }) {
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-xs text-slate-400">Chunk #{chunk.chunkIndex}</span>
                           <span className="text-xs font-medium text-slate-600">
-                            {Math.round(chunk.score * 100)}% match
+                            {Math.max(0, Math.round(chunk.score * 100))}% match
                           </span>
                         </div>
                         <p className="text-xs text-slate-700 line-clamp-3">{chunk.text}</p>

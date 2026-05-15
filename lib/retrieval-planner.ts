@@ -62,11 +62,27 @@ export async function computeNextActions(projectId: string): Promise<PlannerResu
   const entityCount = project.entityNodes.length;
   const hasPrompts = project.prompts.length > 0;
 
-  // Rough retrievability proxy: if chunks exist, read from DB
+  // Retrievability score: use real Sprint 4 cosine match against the first
+  // tracked prompt, NOT a made-up proxy from entity count. The previous proxy
+  // showed "85" on the dashboard while the actual Audit tab showed "2" —
+  // confusing users about whether retrievability was good or bad.
   let retrievabilityScore = 0;
-  if (hasChunks) {
-    // We store no per-run score; use entity coverage as a proxy signal
-    retrievabilityScore = Math.min(100, Math.round((entityCount / 10) * 50) + 40);
+  if (hasChunks && hasPrompts) {
+    try {
+      const { findRelevantChunks } = await import("@/lib/retrieval-engine");
+      const firstPromptText = await prisma.prompt.findFirst({
+        where: { projectId },
+        select: { text: true },
+        orderBy: { createdAt: "asc" },
+      });
+      if (firstPromptText) {
+        const result = await findRelevantChunks(projectId, firstPromptText.text, 1);
+        retrievabilityScore = result.retrievabilityScore;
+      }
+    } catch {
+      // Embedding call may fail (no OPENAI_API_KEY in this env); leave score at 0
+      retrievabilityScore = 0;
+    }
   }
 
   const candidates: Array<RetrievalAction & { score: number }> = [];

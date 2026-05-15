@@ -48,18 +48,19 @@ interface Props {
 export function GapPanel({ projectId, allBrands, onGenerateBrief, generatingBrief }: Props) {
   const [rows, setRows] = useState<EnrichedGapRow[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch(`/api/gaps/${projectId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setRows(data.rows);
-      }
-    } catch {
-      // silent
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setRows(data.rows);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load gaps");
     } finally {
       setLoading(false);
     }
@@ -93,6 +94,15 @@ export function GapPanel({ projectId, allBrands, onGenerateBrief, generatingBrie
             {[1, 2, 3].map((i) => (
               <div key={i} className="h-16 rounded-lg bg-slate-100 animate-pulse" />
             ))}
+          </div>
+        )}
+
+        {error && (
+          <div className="rounded-lg border border-red-200 bg-red-50/40 p-3 flex items-center justify-between">
+            <span className="text-sm text-red-700">Couldn&apos;t load gaps ({error})</span>
+            <button onClick={load} className="text-xs text-red-700 underline hover:no-underline">
+              Retry
+            </button>
           </div>
         )}
 
