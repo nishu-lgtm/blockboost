@@ -11,14 +11,12 @@ import {
   XCircle,
   MinusCircle,
   TrendingUp,
-  Zap,
-  FileText,
   Globe,
-  Loader2,
 } from "lucide-react";
 import { SoVChart, BRAND_COLORS } from "@/components/competitors/sov-chart";
 import { CompetitorTrendChart } from "@/components/competitors/trend-chart";
 import { ManageCompetitorsModal } from "@/components/competitors/manage-modal";
+import { GapPanel } from "@/components/competitors/gap-panel";
 import type { CompetitorData, CompetitorInfo, H2HPromptRow } from "@/lib/competitor-types";
 
 // ---------------------------------------------------------------------------
@@ -359,89 +357,15 @@ export default function CompetitorsPage() {
           </CardContent>
         </Card>
 
-        {/* ── Prompt gap analysis ──────────────────────────────────────── */}
-        <Card className="border-slate-200">
-          <CardHeader className="pb-2">
-            <div className="flex items-center gap-2">
-              <Zap className="h-4 w-4 text-amber-500" />
-              <CardTitle className="text-base font-semibold text-slate-800">
-                Prompt Gap Analysis
-              </CardTitle>
-            </div>
-            <p className="text-xs text-slate-500">
-              Prompts where competitors appear but <strong className="text-slate-700">you don&apos;t</strong> — highest-priority gaps to close
-            </p>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="space-y-2">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-14 w-full" />)}</div>
-            ) : !data || data.gapRows.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
-                <CheckCircle2 className="h-8 w-8 text-green-400" />
-                <p className="text-sm font-medium text-slate-700">No prompt gaps found</p>
-                <p className="text-xs text-slate-400">
-                  {data?.h2hRows.length === 0
-                    ? "Add competitors and run a scan to identify gaps."
-                    : "You appear in every prompt where your competitors appear. Great work!"}
-                </p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto rounded-xl border border-slate-200">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-100">
-                      <th className="px-3 py-2.5 text-left text-xs font-medium text-slate-500">Prompt</th>
-                      <th className="px-3 py-2.5 text-left text-xs font-medium text-slate-500">Competitors present</th>
-                      <th className="px-3 py-2.5 text-right text-xs font-medium text-slate-500">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {data.gapRows.map((row) => (
-                      <tr key={row.promptId} className="hover:bg-red-50 transition-colors bg-red-50/40">
-                        <td className="px-3 py-3 max-w-sm">
-                          <p className="text-xs text-slate-700 line-clamp-2">{row.promptText}</p>
-                        </td>
-                        <td className="px-3 py-3">
-                          <div className="flex flex-wrap gap-1">
-                            {row.competitorsPresent.map((comp, i) => {
-                              const idx = allBrands.indexOf(comp);
-                              return (
-                                <Badge
-                                  key={comp}
-                                  variant="outline"
-                                  className="text-[10px] px-1.5 py-0 border-slate-300 text-slate-600"
-                                  style={{ borderColor: BRAND_COLORS[idx] ?? "#94a3b8", color: BRAND_COLORS[idx] ?? "#64748b" }}
-                                >
-                                  {comp}
-                                </Badge>
-                              );
-                            })}
-                          </div>
-                        </td>
-                        <td className="px-3 py-3 text-right">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 text-xs border-indigo-300 text-indigo-700 hover:bg-indigo-50 gap-1.5"
-                            disabled={generatingBrief === row.promptId}
-                            onClick={() => generateBrief(row.promptId, row.promptText)}
-                          >
-                            {generatingBrief === row.promptId ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : (
-                              <FileText className="h-3 w-3" />
-                            )}
-                            Generate Brief
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* ── Content gap intelligence ──────────────────────────────── */}
+        {data && (
+          <GapPanel
+            projectId={data.projectId}
+            allBrands={allBrands}
+            onGenerateBrief={generateBrief}
+            generatingBrief={generatingBrief}
+          />
+        )}
 
         {/* ── Competitor citation sources ──────────────────────────────── */}
         <Card className="border-slate-200">
