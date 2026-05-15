@@ -17,6 +17,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
+import { computeNextActions } from "@/lib/retrieval-planner";
+import { NextActionCard } from "@/components/dashboard/next-action-card";
+import type { RetrievalAction } from "@/lib/retrieval-planner";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -45,6 +48,11 @@ export default async function DashboardPage() {
     totalMentions > 0 ? Math.round((citedMentions / totalMentions) * 100) : 0;
   const competitorCount = project?.competitors.length ?? 0;
 
+  // Sprint 9: next-best actions
+  const plannerResult = project
+    ? await computeNextActions(project.id).catch(() => null)
+    : null;
+
   return (
     <div className="flex flex-col flex-1">
       <Topbar title="Overview" description="Your AI visibility dashboard" />
@@ -55,6 +63,9 @@ export default async function DashboardPage() {
             totalMentions={totalMentions}
             competitorCount={competitorCount}
             recentMentions={project!.mentions}
+            plannerActions={plannerResult?.actions ?? []}
+            plannerRetrievabilityScore={plannerResult?.retrievabilityScore ?? 0}
+            plannerEntityCount={plannerResult?.entityCount ?? 0}
           />
         ) : (
           <EmptyState userName={session?.user?.name ?? undefined} />
@@ -148,11 +159,17 @@ function DashboardWithData({
   totalMentions,
   competitorCount,
   recentMentions,
+  plannerActions,
+  plannerRetrievabilityScore,
+  plannerEntityCount,
 }: {
   visibilityScore: number;
   totalMentions: number;
   competitorCount: number;
   recentMentions: Mention[];
+  plannerActions: RetrievalAction[];
+  plannerRetrievabilityScore: number;
+  plannerEntityCount: number;
 }) {
   const stats = [
     {
@@ -191,6 +208,16 @@ function DashboardWithData({
 
   return (
     <div className="space-y-6">
+      {/* Next actions */}
+      {plannerActions.length > 0 && (
+        <NextActionCard
+          actions={plannerActions}
+          visibilityScore={visibilityScore}
+          retrievabilityScore={plannerRetrievabilityScore}
+          entityCount={plannerEntityCount}
+        />
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat) => (

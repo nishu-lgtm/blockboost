@@ -19,6 +19,8 @@ import {
   Radio,
   BookOpen,
   Activity,
+  Network,
+  Package,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -62,6 +64,16 @@ const navItems = [
     label: "Audit Tool",
     href: "/dashboard/audit",
     icon: Wrench,
+  },
+  {
+    label: "Entity Graph",
+    href: "/dashboard/entities",
+    icon: Network,
+  },
+  {
+    label: "AI Delivery",
+    href: "/dashboard/ai-delivery",
+    icon: Package,
   },
   {
     label: "AI Copilot",
