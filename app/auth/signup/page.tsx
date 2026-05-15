@@ -21,6 +21,9 @@ export default function SignupPage() {
   const [turnstileToken, setTurnstileToken] = useState("");
   const [googleEnabled, setGoogleEnabled] = useState(false);
   const [accountExistsEmail, setAccountExistsEmail] = useState<string | null>(null);
+  // Sticky inline error — toast.error is transient (4s) and easy to miss,
+  // which left users believing signup succeeded when it actually 4xx'd.
+  const [signupError, setSignupError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -47,6 +50,7 @@ export default function SignupPage() {
 
     setIsLoading(true);
     setAccountExistsEmail(null);
+    setSignupError(null);
 
     try {
       const res = await fetch("/api/auth/register", {
@@ -58,14 +62,11 @@ export default function SignupPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        // Friendly UX for the most common case: account already exists.
-        // Surface a panel with "Sign in" and "Forgot password" links
-        // pre-populated with this email, instead of a generic toast.
         if (res.status === 409) {
           setAccountExistsEmail(formData.email);
           return;
         }
-        toast.error(data.error || "Registration failed. Please try again.");
+        setSignupError(data.error || "Registration failed. Please try again.");
         return;
       }
 
@@ -87,7 +88,7 @@ export default function SignupPage() {
         router.refresh();
       }
     } catch {
-      toast.error("Something went wrong. Please try again.");
+      setSignupError("Network error — please check your connection and try again.");
     } finally {
       setIsLoading(false);
     }
@@ -150,6 +151,26 @@ export default function SignupPage() {
             <h1 className="text-2xl font-bold text-slate-900 mb-2">Create your account</h1>
             <p className="text-slate-500">Start your 14-day free trial. No credit card required.</p>
           </div>
+
+          {signupError && (
+            <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 flex items-start gap-3">
+              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-red-100 flex items-center justify-center mt-0.5">
+                <span className="text-red-600 text-xs font-bold">!</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-red-900 mb-0.5">Signup failed</p>
+                <p className="text-sm text-red-700">{signupError}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSignupError(null)}
+                className="text-red-500 hover:text-red-700 text-xs"
+                aria-label="Dismiss"
+              >
+                ×
+              </button>
+            </div>
+          )}
 
           {accountExistsEmail && (
             <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-5">
