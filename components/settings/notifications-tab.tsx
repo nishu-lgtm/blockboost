@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { CheckCircle2, Loader2, MessageSquare, Mail, Bell } from "lucide-react";
+import { FEATURES } from "@/lib/feature-flags";
 
 interface NotificationPrefs {
   emailNotifications: boolean;
@@ -161,7 +162,9 @@ export function NotificationsTab({
         </CardContent>
       </Card>
 
-      {/* Slack integration */}
+      {/* Slack integration — hidden via FEATURES.slack until relaunch */}
+      {FEATURES.slack && <>
+      {/* */}
       <Card className="border-slate-200">
         <CardHeader>
           <div className="flex items-center gap-2">
@@ -254,6 +257,7 @@ export function NotificationsTab({
           )}
         </CardContent>
       </Card>
+      </>}
     </div>
   );
 }

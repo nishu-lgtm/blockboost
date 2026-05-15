@@ -27,6 +27,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSession } from "next-auth/react";
 import { useEffect, useState, useRef } from "react";
 import { BrandLogo } from "@/components/brand-logo";
+import { FEATURES } from "@/lib/feature-flags";
 
 const navItems = [
   {
@@ -80,12 +81,14 @@ const navItems = [
     href: "/dashboard/copilot",
     icon: Bot,
   },
-  {
-    label: "Social Listening",
-    href: "/dashboard/social",
-    icon: Radio,
-    badge: "Growth+",
-  },
+  ...(FEATURES.socialListening
+    ? [{
+        label: "Social Listening",
+        href: "/dashboard/social",
+        icon: Radio,
+        badge: "Growth+",
+      }]
+    : []),
   {
     label: "Alerts",
     href: "/dashboard/alerts",
