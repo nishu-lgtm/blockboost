@@ -19,6 +19,7 @@ import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { computeNextActions } from "@/lib/retrieval-planner";
 import { NextActionCard } from "@/components/dashboard/next-action-card";
+import { DriftCard } from "@/components/dashboard/drift-card";
 import type { RetrievalAction } from "@/lib/retrieval-planner";
 
 export default async function DashboardPage() {
@@ -59,6 +60,7 @@ export default async function DashboardPage() {
       <main className="flex-1 p-6">
         {hasProjects ? (
           <DashboardWithData
+            projectId={project!.id}
             visibilityScore={visibilityScore}
             totalMentions={totalMentions}
             competitorCount={competitorCount}
@@ -155,6 +157,7 @@ interface Mention {
 }
 
 function DashboardWithData({
+  projectId,
   visibilityScore,
   totalMentions,
   competitorCount,
@@ -163,6 +166,7 @@ function DashboardWithData({
   plannerRetrievabilityScore,
   plannerEntityCount,
 }: {
+  projectId: string;
   visibilityScore: number;
   totalMentions: number;
   competitorCount: number;
@@ -217,6 +221,9 @@ function DashboardWithData({
           entityCount={plannerEntityCount}
         />
       )}
+
+      {/* Weekly drift */}
+      <DriftCard projectId={projectId} />
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
