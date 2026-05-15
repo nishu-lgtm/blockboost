@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { AuditResults } from "@/components/audit/audit-results";
 import { SchemaGenerator } from "@/components/audit/schema-generator";
+import { RetrievalReadiness } from "@/components/audit/retrieval-readiness";
 import type { AuditResult } from "@/lib/audit-types";
 
 // ---------------------------------------------------------------------------
@@ -38,7 +39,7 @@ interface RecentAuditRow {
   robotsTxtBlocking: boolean;
 }
 
-type ActiveTab = "audit" | "schema";
+type ActiveTab = "audit" | "schema" | "retrieval";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -212,7 +213,7 @@ export default function AuditPage() {
 
           {/* Tabs */}
           <div className="flex items-center gap-1 p-1 rounded-lg bg-slate-100">
-            {(["audit", "schema"] as ActiveTab[]).map((tab) => (
+            {(["audit", "schema", "retrieval"] as ActiveTab[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -222,7 +223,7 @@ export default function AuditPage() {
                     : "text-slate-500 hover:text-slate-700"
                 }`}
               >
-                {tab === "audit" ? "Audit URL" : "Schema Generator"}
+                {tab === "audit" ? "Audit URL" : tab === "schema" ? "Schema Generator" : "Retrieval Sim"}
               </button>
             ))}
           </div>
@@ -234,6 +235,12 @@ export default function AuditPage() {
 
         {activeTab === "schema" ? (
           <SchemaGenerator brandName={brandName} />
+        ) : activeTab === "retrieval" ? (
+          projectId ? (
+            <RetrievalReadiness projectId={projectId} />
+          ) : (
+            <p className="text-sm text-slate-500">Loading project…</p>
+          )
         ) : (
           <>
             {/* ── URL input card ──────────────────────────────────────── */}

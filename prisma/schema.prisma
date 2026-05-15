@@ -231,6 +231,9 @@ model Project {
   socialOpportunities SocialOpportunity[]
   socialSettings  SocialSettings?
   aiBotVisits     AiBotVisit[]
+  retrievalChunks RetrievalChunk[]
+  entityNodes     EntityNode[]
+  entityEdges     EntityEdge[]
 }
 
 model Competitor {
@@ -418,6 +421,61 @@ model AiBotVisit {
   @@unique([dedupeKey])
   @@index([projectId, visitedAt])
   @@index([projectId, botName, visitedAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Sprint 4: Retrieval Simulation
+// ─────────────────────────────────────────────────────────────
+
+model RetrievalChunk {
+  id         String   @id @default(cuid())
+  projectId  String
+  url        String
+  text       String   @db.Text
+  chunkIndex Int
+  embedding  Float[]
+  createdAt  DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([projectId, url])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Sprint 5: Entity Graph
+// ─────────────────────────────────────────────────────────────
+
+model EntityNode {
+  id        String   @id @default(cuid())
+  projectId String
+  type      String
+  name      String
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now())
+
+  project  Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  outEdges EntityEdge[] @relation("EdgeFrom")
+  inEdges  EntityEdge[] @relation("EdgeTo")
+
+  @@unique([projectId, type, name])
+  @@index([projectId])
+}
+
+model EntityEdge {
+  id        String   @id @default(cuid())
+  projectId String
+  fromId    String
+  toId      String
+  relation  String
+  createdAt DateTime @default(now())
+
+  from    EntityNode @relation("EdgeFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  to      EntityNode @relation("EdgeTo",   fields: [toId],   references: [id], onDelete: Cascade)
+  project Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, fromId, toId, relation])
+  @@index([projectId])
 }
 
 // ─────────────────────────────────────────────────────────────
