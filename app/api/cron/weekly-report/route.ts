@@ -169,10 +169,12 @@ async function runWeeklyReport(): Promise<{ sent: number; failed: number }> {
             pdfUrl = blob.url;
           } catch { /* blob not configured */ }
 
+          const { nanoid } = await import("nanoid");
           await prisma.report.create({
             data: {
               projectId: proj.id,
               userId: eu.id,
+              shareToken: nanoid(32),
               reportType: ReportType.MONTHLY,
               periodStart: prevMonthStart,
               periodEnd: prevMonthEnd,

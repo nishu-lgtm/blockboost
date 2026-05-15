@@ -57,13 +57,15 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = (await req.json().catch(() => ({}))) as { projectId?: string };
+    const raw = await req.json().catch(() => ({}));
+    const projectId = typeof raw?.projectId === "string" && /^c[a-z0-9]{20,}$/.test(raw.projectId)
+      ? raw.projectId : undefined;
 
     await prisma.alert.updateMany({
       where: {
         userId: session.user.id,
         read: false,
-        ...(body.projectId ? { projectId: body.projectId } : {}),
+        ...(projectId ? { projectId } : {}),
       },
       data: { read: true },
     });

@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { scanProject } from "@/lib/social-scanner";
+
+const bodySchema = z.object({ projectId: z.string().cuid() });
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -9,10 +12,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { projectId } = await req.json();
-  if (!projectId) {
-    return NextResponse.json({ error: "projectId required" }, { status: 400 });
+  const parsed = bodySchema.safeParse(await req.json().catch(() => ({})));
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Invalid input" },
+      { status: 400 }
+    );
   }
+  const { projectId } = parsed.data;
 
   // Verify plan (Growth+ only)
   const user = await prisma.user.findUnique({

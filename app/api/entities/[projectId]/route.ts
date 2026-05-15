@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { extractAndStoreEntities, getEntityGraph } from "@/lib/entity-extractor";
+
+// 50k chars ≈ 12.5k tokens, well under 4o-mini context. Cap protects against
+// users pasting a whole book and bombing the LLM token budget.
+const extractBodySchema = z.object({
+  text: z.string().min(1).max(50_000),
+});
 
 export async function GET(
   _req: NextRequest,
@@ -35,9 +42,14 @@ export async function POST(
   });
   if (!project) return NextResponse.json({ error: "Project not found" }, { status: 404 });
 
-  const body = await req.json().catch(() => ({}));
-  const { text } = body as { text?: string };
-  if (!text) return NextResponse.json({ error: "text required" }, { status: 400 });
+  const parsed = extractBodySchema.safeParse(await req.json().catch(() => ({})));
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Invalid input" },
+      { status: 400 }
+    );
+  }
+  const { text } = parsed.data;
 
   const summary = await extractAndStoreEntities(projectId, project.brandName, text);
   const graph = await getEntityGraph(projectId);

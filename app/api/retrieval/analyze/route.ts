@@ -1,17 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { analyzeUrl, findRelevantChunks } from "@/lib/retrieval-engine";
+
+const bodySchema = z.object({
+  projectId: z.string().cuid(),
+  url: z.string().url().max(2048),
+});
 
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await req.json().catch(() => ({}));
-  const { projectId, url } = body as { projectId?: string; url?: string };
-  if (!projectId || !url) {
-    return NextResponse.json({ error: "projectId and url required" }, { status: 400 });
+  const parsed = bodySchema.safeParse(await req.json().catch(() => ({})));
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Invalid input" },
+      { status: 400 }
+    );
   }
+  const { projectId, url } = parsed.data;
 
   const project = await prisma.project.findFirst({
     where: { id: projectId, userId: session.user.id as string },

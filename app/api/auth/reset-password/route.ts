@@ -4,6 +4,7 @@ import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { validatePassword } from "@/lib/password-policy";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 const bodySchema = z.object({
   token: z.string().min(1),
@@ -38,6 +39,17 @@ function verifyResetToken(token: string): { userId: string } | null {
 }
 
 export async function POST(req: Request) {
+  // Rate limit: HMAC token format `userId.ts.sig` exposes userId; rate-limit per IP
+  // to prevent attackers from brute-forcing the signature for a known userId.
+  const ip = clientIp(req);
+  const limited = rateLimit(`reset-password:${ip}`, 5, 15 * 60 * 1000);
+  if (!limited.ok) {
+    return NextResponse.json(
+      { error: `Too many reset attempts. Try again in ${limited.retryAfter}s.` },
+      { status: 429, headers: { "Retry-After": String(limited.retryAfter) } }
+    );
+  }
+
   const body = await req.json().catch(() => ({}));
   const parsed = bodySchema.safeParse(body);
   if (!parsed.success) {

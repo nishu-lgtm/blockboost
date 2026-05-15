@@ -4,9 +4,17 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { compileReportData } from "@/lib/report-compiler";
+
+const bodySchema = z.object({
+  projectId: z.string().cuid(),
+  startDate: z.string().datetime().or(z.string().regex(/^\d{4}-\d{2}-\d{2}/)),
+  endDate: z.string().datetime().or(z.string().regex(/^\d{4}-\d{2}-\d{2}/)),
+  reportType: z.enum(["ONDEMAND", "WEEKLY", "MONTHLY"]).optional().default("ONDEMAND"),
+});
 import { renderToBuffer } from "@react-pdf/renderer";
 import { put } from "@vercel/blob";
 import { ReportPDF } from "@/components/report/ReportPDF";
@@ -36,20 +44,14 @@ export async function POST(req: NextRequest) {
   }
   const userId = session.user.id;
 
-  const body = await req.json().catch(() => ({}));
-  const { projectId, startDate, endDate, reportType = "ONDEMAND" } = body as {
-    projectId?: string;
-    startDate?: string;
-    endDate?: string;
-    reportType?: string;
-  };
-
-  if (!projectId || !startDate || !endDate) {
+  const parsed = bodySchema.safeParse(await req.json().catch(() => ({})));
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: "projectId, startDate and endDate are required" },
-      { status: 400 },
+      { error: parsed.error.issues[0]?.message ?? "Invalid input" },
+      { status: 400 }
     );
   }
+  const { projectId, startDate, endDate, reportType } = parsed.data;
 
   // Verify project ownership
   const project = await prisma.project.findFirst({
@@ -133,11 +135,14 @@ export async function POST(req: NextRequest) {
     // Continue without PDF URL — data is still saved
   }
 
-  // 5. Save Report record
+  // 5. Save Report record. Override cuid default with a crypto-random
+  // nanoid so public share URLs aren't enumerable (cuid leaks creation order).
+  const { nanoid } = await import("nanoid");
   const report = await prisma.report.create({
     data: {
       projectId,
       userId,
+      shareToken: nanoid(32),
       reportType: (reportType as ReportType) ?? ReportType.ONDEMAND,
       periodStart: start,
       periodEnd: end,

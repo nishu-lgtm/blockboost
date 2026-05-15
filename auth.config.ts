@@ -6,7 +6,11 @@
 import type { NextAuthConfig } from "next-auth";
 
 export const authConfig: NextAuthConfig = {
-  session: { strategy: "jwt" },
+  // 7-day max age with daily sliding renewal. NextAuth default is 30d which
+  // is too long for a B2B SaaS holding marketing data — compromised laptops
+  // stay signed in for a month. 7d + sliding gives active users a transparent
+  // experience while bounding the blast radius of stolen sessions.
+  session: { strategy: "jwt", maxAge: 7 * 24 * 60 * 60, updateAge: 24 * 60 * 60 },
   pages: {
     signIn: "/auth/login",
     error: "/auth/error",

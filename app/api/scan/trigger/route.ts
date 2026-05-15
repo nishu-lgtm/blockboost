@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { runScan, platformsForPlan } from "@/lib/scan-engine";
+
+const bodySchema = z.object({
+  projectId: z.string().cuid("Invalid project ID"),
+});
 
 // Allow up to 5 minutes if the scan is forced synchronous (Pro plan only).
 // In async mode (the default) the request returns in <1s.
@@ -14,11 +19,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { projectId } = await req.json();
-
-    if (!projectId) {
-      return NextResponse.json({ error: "projectId is required" }, { status: 400 });
+    const parsed = bodySchema.safeParse(await req.json().catch(() => ({})));
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message ?? "Invalid input" },
+        { status: 400 }
+      );
     }
+    const { projectId } = parsed.data;
 
     // Verify the project belongs to the requesting user and fetch plan
     const project = await prisma.project.findFirst({
