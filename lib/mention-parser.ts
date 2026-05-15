@@ -9,6 +9,7 @@
 
 import { z } from "zod";
 import { llmCall, isLlmAvailable } from "@/lib/llm-call";
+import { embedCall, cosineSimilarity, isEmbeddingAvailable, BRAND_SIMILARITY_THRESHOLD } from "@/lib/embeddings";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -158,6 +159,34 @@ async function classifySentiment(
 }
 
 // ---------------------------------------------------------------------------
+// Hybrid brand detection — exact match fast path + embedding fallback
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns true if `brand` appears in `text` either as an exact substring
+ * or (when embeddings are available) as a semantic near-match.
+ *
+ * Fast path: lower.includes() — zero cost, handles 95%+ of real crawl
+ * responses where the brand name appears verbatim.
+ *
+ * Slow path: cosine similarity between the brand-name embedding and the
+ * response-text embedding. Catches typos, abbreviations, and spacing
+ * variants ("Block Boost" vs "BlockBoost"). Capped at 2 000 chars so
+ * the text embedding isn't too diluted by surrounding content.
+ */
+async function isBrandPresent(text: string, brand: string): Promise<boolean> {
+  if (text.toLowerCase().includes(brand.toLowerCase())) return true;
+  if (!isEmbeddingAvailable()) return false;
+
+  const [brandVec, textVec] = await Promise.all([
+    embedCall(brand),
+    embedCall(text.slice(0, 2000)),
+  ]);
+  if (brandVec.length === 0 || textVec.length === 0) return false;
+  return cosineSimilarity(brandVec, textVec) >= BRAND_SIMILARITY_THRESHOLD;
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -170,7 +199,7 @@ export async function extractMentions(
   competitors: string[]
 ): Promise<MentionAnalysis> {
   const lower = responseText.toLowerCase();
-  const brandMentioned = lower.includes(brandName.toLowerCase());
+  const brandMentioned = await isBrandPresent(responseText, brandName);
 
   const competitorsMentioned = competitors.filter((c) =>
     lower.includes(c.toLowerCase())
