@@ -20,6 +20,20 @@ function LoginPageInner() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [formData, setFormData] = useState({ email: prefilledEmail, password: "" });
   const [googleEnabled, setGoogleEnabled] = useState(false);
+  // Sticky inline error — replaces the transient toast that left users
+  // with a vague "Something went wrong" message they couldn't act on.
+  const [loginError, setLoginError] = useState<string | null>(null);
+
+  // Informational banner from query params (e.g. ?msg=signup-success-please-sign-in
+  // after auto-signIn fails during signup, or ?msg=google-unavailable when the
+  // middleware intercepts a stale Google sign-in link).
+  const msg = searchParams.get("msg");
+  const infoBanner: string | null =
+    msg === "signup-success-please-sign-in"
+      ? "Your account was created. Please sign in with your email and password to continue."
+      : msg === "google-unavailable"
+      ? "Google sign-in isn't available right now. Sign in with your email and password instead."
+      : null;
 
   // Only show "Continue with Google" if the provider is actually registered
   // server-side. Without this, clicking the button when GOOGLE_CLIENT_ID
@@ -36,6 +50,7 @@ function LoginPageInner() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setIsLoading(true);
+    setLoginError(null);
 
     try {
       const result = await signIn("credentials", {
@@ -44,14 +59,33 @@ function LoginPageInner() {
         redirect: false,
       });
 
+      // result.error returns one of: "CredentialsSignin", "Configuration",
+      // or a generic message. Surface them differently so users get an
+      // actionable hint instead of "something went wrong" for everything.
       if (result?.error) {
-        toast.error("Invalid email or password. Please try again.");
-      } else {
+        if (result.error === "CredentialsSignin" || result.error === "CredentialsSignin&code=credentials") {
+          setLoginError("Wrong email or password. Double-check both and try again.");
+        } else if (result.error === "Configuration") {
+          setLoginError(
+            "Sign-in is temporarily unavailable. Try refreshing the page or contact support."
+          );
+        } else {
+          // Show the raw error code so support can debug rare cases
+          setLoginError(`Sign-in failed (${result.error}). Refresh and try again.`);
+        }
+      } else if (result?.ok) {
         router.push("/dashboard");
         router.refresh();
+      } else {
+        // No error AND no ok — uncommon but happens if NextAuth's response
+        // is malformed (CSP issue, network glitch). Tell user to refresh.
+        setLoginError(
+          "Couldn't complete sign-in — please refresh the page and try again."
+        );
       }
-    } catch {
-      toast.error("Something went wrong. Please try again.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setLoginError(`Network error: ${msg.slice(0, 120)}. Check your connection.`);
     } finally {
       setIsLoading(false);
     }
@@ -137,6 +171,35 @@ function LoginPageInner() {
                 </div>
               </div>
             </>
+          )}
+
+          {infoBanner && !loginError && (
+            <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 flex items-start gap-3">
+              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center mt-0.5">
+                <span className="text-emerald-600 text-xs font-bold">✓</span>
+              </div>
+              <p className="text-sm text-emerald-800 flex-1">{infoBanner}</p>
+            </div>
+          )}
+
+          {loginError && (
+            <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 flex items-start gap-3">
+              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-red-100 flex items-center justify-center mt-0.5">
+                <span className="text-red-600 text-xs font-bold">!</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-red-900 mb-0.5">Sign in failed</p>
+                <p className="text-sm text-red-700">{loginError}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLoginError(null)}
+                className="text-red-500 hover:text-red-700 text-xs"
+                aria-label="Dismiss"
+              >
+                ×
+              </button>
+            </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">

@@ -76,15 +76,18 @@ export default function SignupPage() {
         "Account created. Please check your inbox to verify your email."
       );
 
-      // Auto sign-in after registration
+      // Auto sign-in after registration. If this fails, send the user to
+      // /auth/login with their email pre-filled and an explanatory message —
+      // their account WAS created, they just need to sign in manually.
       const signInResult = await signIn("credentials", {
         email: formData.email,
         password: formData.password,
         redirect: false,
       });
 
-      if (signInResult?.error) {
-        router.push("/auth/login");
+      if (signInResult?.error || !signInResult?.ok) {
+        const url = `/auth/login?email=${encodeURIComponent(formData.email)}&msg=signup-success-please-sign-in`;
+        router.push(url);
       } else {
         router.push("/dashboard");
         router.refresh();
