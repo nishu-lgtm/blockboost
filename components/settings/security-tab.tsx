@@ -4,9 +4,10 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
+import { PasswordInput } from "@/components/auth/password-input";
+import { PasswordPolicyHints } from "@/components/auth/password-policy-hints";
 
 export function SecurityTab() {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -19,8 +20,8 @@ export function SecurityTab() {
       toast.error("All fields are required");
       return;
     }
-    if (newPassword.length < 8) {
-      toast.error("New password must be at least 8 characters");
+    if (newPassword.length < 10) {
+      toast.error("New password must be at least 10 characters");
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -56,35 +57,39 @@ export function SecurityTab() {
         <CardDescription>Manage your password and account security.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 max-w-sm">
           <Label>Current password</Label>
-          <Input
-            type="password"
-            placeholder="••••••••"
+          <PasswordInput
+            placeholder="Your current password"
             value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
-            className="border-slate-300 max-w-sm"
+            autoComplete="current-password"
+            className="border-slate-300"
           />
         </div>
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 max-w-sm">
           <Label>New password</Label>
-          <Input
-            type="password"
-            placeholder="••••••••"
+          <PasswordInput
+            placeholder="Pick a strong password you'll remember"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
-            className="border-slate-300 max-w-sm"
+            autoComplete="new-password"
+            className="border-slate-300"
           />
+          <PasswordPolicyHints password={newPassword} />
         </div>
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 max-w-sm">
           <Label>Confirm new password</Label>
-          <Input
-            type="password"
-            placeholder="••••••••"
+          <PasswordInput
+            placeholder="Re-enter your new password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            className="border-slate-300 max-w-sm"
+            autoComplete="new-password"
+            className="border-slate-300"
           />
+          {confirmPassword.length > 0 && confirmPassword !== newPassword && (
+            <p className="text-xs text-red-500">Passwords don&apos;t match</p>
+          )}
         </div>
         <Button
           onClick={handleUpdate}

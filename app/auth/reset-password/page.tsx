@@ -4,6 +4,8 @@ import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Loader2, BarChart3, CheckCircle } from "lucide-react";
+import { PasswordInput } from "@/components/auth/password-input";
+import { PasswordPolicyHints } from "@/components/auth/password-policy-hints";
 
 function ResetPasswordInner() {
   const searchParams = useSearchParams();
@@ -86,25 +88,28 @@ function ResetPasswordInner() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">New password</label>
-                  <input
-                    type="password"
-                    required
-                    minLength={8}
+                  <PasswordInput
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="At least 8 characters"
+                    required
+                    minLength={10}
+                    autoComplete="new-password"
+                    placeholder="Pick a strong password you'll remember"
                   />
+                  <PasswordPolicyHints password={newPassword} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Confirm password</label>
-                  <input
-                    type="password"
-                    required
+                  <PasswordInput
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    required
+                    autoComplete="new-password"
+                    placeholder="Re-enter your new password"
                   />
+                  {confirmPassword.length > 0 && confirmPassword !== newPassword && (
+                    <p className="mt-1 text-xs text-red-500">Passwords don&apos;t match</p>
+                  )}
                 </div>
                 {error && <p className="text-sm text-red-600">{error}</p>}
                 <button

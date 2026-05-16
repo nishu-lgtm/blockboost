@@ -115,3 +115,26 @@ export function validatePassword(password: string): ValidationResult {
   }
   return { ok: true };
 }
+
+// Per-rule status for live UI feedback. Each rule becomes a row in the
+// signup form's policy hint card so users see exactly what's failing
+// instead of getting one error after submit.
+export interface PasswordChecks {
+  minLength: boolean;
+  hasLetter: boolean;
+  hasNumber: boolean;
+  notCommon: boolean;
+}
+
+export function getPasswordChecks(password: string): PasswordChecks {
+  return {
+    minLength: password.length >= MIN_LENGTH,
+    hasLetter: /[A-Za-z]/.test(password),
+    hasNumber: /[0-9]/.test(password),
+    // Only mark "not common" once they've typed something — empty string
+    // shouldn't show a green check before the user has started.
+    notCommon: password.length > 0 && !COMMON_BLOCKLIST.has(password.toLowerCase()),
+  };
+}
+
+export const PASSWORD_MIN_LENGTH = MIN_LENGTH;

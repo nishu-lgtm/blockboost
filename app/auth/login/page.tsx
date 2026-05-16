@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/auth/password-input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -166,13 +167,13 @@ function LoginPageInner() {
                   Forgot password?
                 </Link>
               </div>
-              <Input
+              <PasswordInput
                 id="password"
-                type="password"
                 placeholder="Enter your password"
                 value={formData.password}
                 onChange={(e) => setFormData((f) => ({ ...f, password: e.target.value }))}
                 required
+                autoComplete="current-password"
                 className="h-11 border-slate-300"
               />
             </div>

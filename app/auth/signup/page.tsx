@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/auth/password-input";
+import { PasswordPolicyHints } from "@/components/auth/password-policy-hints";
 import { Label } from "@/components/ui/label";
 import { Loader2, CheckCircle2 } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
@@ -276,19 +278,17 @@ export default function SignupPage() {
               <Label htmlFor="password" className="text-slate-700">
                 Password
               </Label>
-              <Input
+              <PasswordInput
                 id="password"
-                type="password"
-                placeholder="At least 10 characters with a number"
+                placeholder="Pick a strong password you'll remember"
                 value={formData.password}
                 onChange={(e) => setFormData((f) => ({ ...f, password: e.target.value }))}
                 required
                 minLength={10}
+                autoComplete="new-password"
                 className="h-11 border-slate-300"
               />
-              <p className="text-xs text-slate-400">
-                Must be 10+ characters and include a letter and a number.
-              </p>
+              <PasswordPolicyHints password={formData.password} />
             </div>
 
             {TURNSTILE_SITEKEY && (
