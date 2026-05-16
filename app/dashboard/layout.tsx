@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Sidebar from "@/components/dashboard/sidebar";
 import { EmailVerificationBanner } from "@/components/dashboard/email-verification-banner";
+import { ScanStatusBanner } from "@/components/dashboard/scan-status-banner";
 
 export default async function DashboardLayout({
   children,
@@ -17,15 +18,22 @@ export default async function DashboardLayout({
 
   const userId = session.user!.id!;
 
-  const [projectCount, user] = await Promise.all([
-    prisma.project.count({ where: { userId } }),
+  const [user, firstProject] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: { emailVerified: true },
     }),
+    // Single source of truth for "the current project" — first by createdAt
+    // matches what the rest of the dashboard renders. Used by the scan
+    // status banner so it tracks the same project the user sees.
+    prisma.project.findFirst({
+      where: { userId },
+      orderBy: { createdAt: "asc" },
+      select: { id: true },
+    }),
   ]);
 
-  if (projectCount === 0) {
+  if (!firstProject) {
     redirect("/onboarding");
   }
 
@@ -34,6 +42,9 @@ export default async function DashboardLayout({
       <Sidebar />
       <div className="flex-1 ml-64 flex flex-col min-h-screen overflow-auto">
         <EmailVerificationBanner emailVerified={!!user?.emailVerified} />
+        <div className="px-6 pt-4">
+          <ScanStatusBanner projectId={firstProject.id} />
+        </div>
         {children}
       </div>
     </div>

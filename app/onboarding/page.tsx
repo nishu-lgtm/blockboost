@@ -102,11 +102,18 @@ function OnboardingContent() {
 
       const { projectId } = createData;
 
+      // Fire the scan AND set the dashboard-wide "scan in flight" flag so
+      // the ScanStatusBanner (visible on every dashboard page) shows
+      // "Scanning…" instead of leaving the user staring at a 0% dashboard
+      // with no idea anything is happening. (The fix for nishuprasad75's
+      // 2026-05-16 report.)
       fetch("/api/scan/trigger", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectId }),
       }).catch(() => {});
+      const { markScanRunning } = await import("@/components/dashboard/scan-status-banner");
+      markScanRunning();
 
       toast.success("Your first scan is running. Results in ~5 minutes.");
       router.push("/dashboard");

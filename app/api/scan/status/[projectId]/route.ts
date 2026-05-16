@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getScanStatus } from "@/lib/scan-status";
 
 export async function GET(
   _req: Request,
@@ -23,33 +24,24 @@ export async function GET(
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    // Latest mention (proxy for last scan timestamp)
-    const latestMention = await prisma.mention.findFirst({
-      where: { projectId },
-      orderBy: { createdAt: "desc" },
-      select: { createdAt: true },
-    });
+    const status = await getScanStatus(projectId);
 
-    // Aggregate stats
-    const [totalMentions, brandMentionedCount, citationCount] = await Promise.all([
-      prisma.mention.count({ where: { projectId } }),
-      prisma.mention.count({ where: { projectId, brandMentioned: true } }),
-      prisma.citation.count({ where: { projectId } }),
-    ]);
-
-    const mentionRate =
-      totalMentions > 0
-        ? Math.round((brandMentionedCount / totalMentions) * 100)
-        : 0;
+    // citation count is the only legacy field not in ScanStatus — keep for back-compat
+    const citationsFound = await prisma.citation.count({ where: { projectId } });
 
     return NextResponse.json({
       projectId,
-      lastScanAt: latestMention?.createdAt ?? null,
+      // Legacy fields (still consumed by older client code):
+      lastScanAt: status.lastScannedAt,
       summary: {
-        totalMentions,
-        mentionRate,
-        citationsFound: citationCount,
+        totalMentions: status.totalMentions,
+        mentionRate: status.mentionRate,
+        citationsFound,
       },
+      // New richer fields for ScanStatusBanner:
+      state: status.state,
+      suspectedScraperIssue: status.suspectedScraperIssue,
+      apifyApprovalUrl: status.apifyApprovalUrl,
     });
   } catch (error) {
     console.error("Scan status error:", error);

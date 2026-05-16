@@ -164,6 +164,11 @@ export default function AIVisibilityPage() {
         body: JSON.stringify({ projectId: selectedProject.id }),
       });
       if (!res.ok) throw new Error("Scan failed");
+      // Set the dashboard-wide "scan in flight" flag so the sticky
+      // ScanStatusBanner (visible on every dashboard page) shows a
+      // "Scanning…" message and starts polling for completion.
+      const { markScanRunning } = await import("@/components/dashboard/scan-status-banner");
+      markScanRunning();
       // Reload data after scan
       await loadData(selectedProject.id);
     } catch {
