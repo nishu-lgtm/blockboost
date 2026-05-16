@@ -60,6 +60,13 @@ export interface SummaryMetrics {
   confidence: "high" | "medium" | "low";
 }
 
+export interface VisibilitySegmentLite {
+  promptCount: number;
+  totalScans: number;
+  citedScans: number;
+  mentionRate: number;
+}
+
 export interface VisibilityData {
   projectId: string;
   projectName: string;
@@ -71,4 +78,17 @@ export interface VisibilityData {
   mentionRateByIntent: IntentRate[];
   promptBreakdown: PromptRow[];
   sentimentBreakdown: SentimentBreakdown;
+  /**
+   * Branded vs unbranded segmentation (added 2026-05-16).
+   *
+   * Branded = prompt text contains the brand name → engagement signal.
+   * Unbranded = generic competitive prompts → real discovery signal.
+   * weightedScore = 0.7 × unbranded + 0.3 × branded, anchored on the harder
+   * unbranded number which is what "AI Visibility" actually means.
+   */
+  segments?: {
+    branded: VisibilitySegmentLite;
+    unbranded: VisibilitySegmentLite;
+    weightedScore: number;
+  };
 }

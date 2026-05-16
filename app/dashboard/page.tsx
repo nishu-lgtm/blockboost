@@ -22,6 +22,7 @@ import { NextActionCard } from "@/components/dashboard/next-action-card";
 import { DriftCard } from "@/components/dashboard/drift-card";
 import type { RetrievalAction } from "@/lib/retrieval-planner";
 import { bucketVisibilityScore } from "@/lib/score-bucket";
+import { computeVisibilitySegments } from "@/lib/visibility-segments";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -43,11 +44,17 @@ export default async function DashboardPage() {
 
   const hasProjects = !!project;
 
-  // Compute real stats
+  // Compute real stats — anchor on the WEIGHTED segmented score, not the
+  // raw mention rate. Pure mention rate is inflated by branded prompts
+  // (where the brand name is in the question) and overstates real AI
+  // discovery. Weighted = 70% unbranded + 30% branded, which is what
+  // every external auditor evaluates a brand on. See lib/visibility-segments.
   const totalMentions = project?._count.mentions ?? 0;
-  const citedMentions = project?.mentions.filter((m) => m.brandMentioned).length ?? 0;
-  const visibilityScore =
-    totalMentions > 0 ? Math.round((citedMentions / totalMentions) * 100) : 0;
+  const segments = project
+    ? await computeVisibilitySegments(project.id).catch(() => null)
+    : null;
+  const visibilityScore = segments?.weightedScore ?? 0;
+  const unbrandedRate = segments?.unbranded.mentionRate ?? null;
   const competitorCount = project?.competitors.length ?? 0;
 
   // Sprint 9: next-best actions
@@ -63,6 +70,7 @@ export default async function DashboardPage() {
           <DashboardWithData
             projectId={project!.id}
             visibilityScore={visibilityScore}
+            unbrandedRate={unbrandedRate}
             totalMentions={totalMentions}
             competitorCount={competitorCount}
             recentMentions={project!.mentions}
@@ -160,6 +168,7 @@ interface Mention {
 function DashboardWithData({
   projectId,
   visibilityScore,
+  unbrandedRate,
   totalMentions,
   competitorCount,
   recentMentions,
@@ -169,6 +178,7 @@ function DashboardWithData({
 }: {
   projectId: string;
   visibilityScore: number;
+  unbrandedRate: number | null;
   totalMentions: number;
   competitorCount: number;
   recentMentions: Mention[];
@@ -176,9 +186,8 @@ function DashboardWithData({
   plannerRetrievabilityScore: number;
   plannerEntityCount: number;
 }) {
-  // Replace "0%" with human-readable bucket — pre-scan users were seeing a
-  // wall of zeros that made the product look broken. Now: "No data yet"
-  // before any scan, "Low"/"Medium"/"Strong" after.
+  // Bucket the weighted score (visibilityScore is now segments.weightedScore,
+  // not raw mention rate — see app/dashboard/page.tsx default export).
   const visibility = bucketVisibilityScore(visibilityScore, totalMentions);
   const toneClass: Record<string, string> = {
     slate: "text-slate-500",
@@ -187,14 +196,23 @@ function DashboardWithData({
     emerald: "text-emerald-600",
   };
 
+  // Override the generic description with the more diagnostic
+  // "Unbranded discovery: X%" line when we have segment data. That's the
+  // single number that tells the truth about real AI visibility.
+  const visibilityDescription = visibility.noData
+    ? visibility.description
+    : unbrandedRate !== null
+      ? `Unbranded discovery: ${unbrandedRate}% · weighted from branded + unbranded segments.`
+      : visibility.description;
+
   const stats = [
     {
       label: "AI Visibility",
       // Show the label as the headline; the raw % is now a subtitle so
       // power users can still see exact numbers when relevant.
       value: visibility.label,
-      subValue: visibility.noData ? null : `${visibility.score}%`,
-      description: visibility.description,
+      subValue: visibility.noData ? null : `${visibility.score}/100`,
+      description: visibilityDescription,
       icon: BarChart3,
       color: toneClass[visibility.tone],
       bg: visibility.tone === "slate" ? "bg-slate-50"

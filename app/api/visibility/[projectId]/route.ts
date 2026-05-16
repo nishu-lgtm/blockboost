@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Platform, Sentiment, type QueryIntent } from "@prisma/client";
 import { INTENT_LABELS, INTENT_COMMERCIAL_WEIGHT } from "@/lib/query-intent";
 import type { IntentRate } from "@/lib/visibility-types";
+import { computeVisibilitySegments } from "@/lib/visibility-segments";
 
 // ---------------------------------------------------------------------------
 // Types returned to the client
@@ -51,6 +52,13 @@ export interface SummaryMetrics {
   confidence: "high" | "medium" | "low"; // Sprint 2 multi-pass confidence
 }
 
+interface VisibilitySegmentLite {
+  promptCount: number;
+  totalScans: number;
+  citedScans: number;
+  mentionRate: number;
+}
+
 export interface VisibilityData {
   projectId: string;
   projectName: string;
@@ -62,6 +70,11 @@ export interface VisibilityData {
   mentionRateByIntent: IntentRate[];
   promptBreakdown: PromptRow[];
   sentimentBreakdown: SentimentBreakdown;
+  segments?: {
+    branded: VisibilitySegmentLite;
+    unbranded: VisibilitySegmentLite;
+    weightedScore: number;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -339,6 +352,11 @@ export async function GET(
       }))
       .sort((a, b) => b.commercialWeight - a.commercialWeight);
 
+    // Branded vs unbranded segments — the truthful signal of AI Visibility.
+    // Branded prompts (those containing the brand name) inflate overall rate
+    // because LLMs engage with the name even without real knowledge. Unbranded
+    // is where actual discovery happens.
+    const segmentsFull = await computeVisibilitySegments(projectId);
     const data: VisibilityData = {
       projectId,
       projectName: project.name,
@@ -350,6 +368,11 @@ export async function GET(
       mentionRateByIntent,
       promptBreakdown,
       sentimentBreakdown,
+      segments: {
+        branded: segmentsFull.branded,
+        unbranded: segmentsFull.unbranded,
+        weightedScore: segmentsFull.weightedScore,
+      },
     };
 
     return NextResponse.json(data);

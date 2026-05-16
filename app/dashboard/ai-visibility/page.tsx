@@ -27,6 +27,7 @@ import { PlatformBarChart } from "@/components/visibility/platform-bar-chart";
 import { TimeSeriesChart } from "@/components/visibility/time-series-chart";
 import { PromptTable } from "@/components/visibility/prompt-table";
 import { SentimentPieChart } from "@/components/visibility/sentiment-pie-chart";
+import { SegmentBreakdown } from "@/components/visibility/segment-breakdown";
 import type { VisibilityData } from "@/lib/visibility-types";
 
 // ---------------------------------------------------------------------------
@@ -325,6 +326,16 @@ export default function AIVisibilityPage() {
             </>
           )}
         </div>
+
+        {/* ── Branded vs Unbranded segmentation (added 2026-05-16) ── */}
+        {data?.segments && (
+          <SegmentBreakdown
+            branded={data.segments.branded}
+            unbranded={data.segments.unbranded}
+            weightedScore={data.segments.weightedScore}
+            brandName={data.brandName}
+          />
+        )}
 
         {/* ── Charts row ───────────────────────────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
