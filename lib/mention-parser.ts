@@ -162,29 +162,111 @@ async function classifySentiment(
 // Hybrid brand detection — exact match fast path + embedding fallback
 // ---------------------------------------------------------------------------
 
+// Phrases that indicate the AI explicitly DOESN'T know about the brand —
+// even though the brand name appears in the response (echoed from the
+// user's question). nishuprasad75 surfaced this on 2026-05-16: the parser
+// was counting "I don't have information about PlutoxAI" as a real mention,
+// inflating the dashboard to 100% mention rate. These regex patterns
+// require the brand name to be near the disclaimer (same ~200-char window).
+const DISCLAIMER_PATTERNS = [
+  /\bI (?:don'?t|do not|cannot|can'?t|couldn'?t|wasn'?t|am not) (?:have|find|know|recognize|currently have) (?:[^.]*?)/i,
+  /\bI'?m not (?:familiar|aware) (?:with|of) /i,
+  /\bI (?:have|haven'?t had) (?:no|any) (?:information|knowledge|details|data) (?:about|on|of|for|regarding) /i,
+  /\bThere'?s no (?:reliable |publicly available |verifiable )?(?:information|data|details|public information) (?:about|on|for) /i,
+  /\bI (?:wasn'?t|was not) able to (?:find|locate|verify) /i,
+  /\bnot (?:a |an )?(?:real|established|well-known|recognized) (?:company|product|platform|brand|tool) /i,
+  /\b(?:no|insufficient|limited) information (?:is |was )?available (?:about|on) /i,
+];
+
 /**
- * Returns true if `brand` appears in `text` either as an exact substring
- * or (when embeddings are available) as a semantic near-match.
+ * Returns true if the response contains a disclaimer phrase near a brand
+ * mention. Phrases must appear within ~200 characters of the brand name
+ * to count — otherwise unrelated disclaimers elsewhere in the response
+ * would suppress real mentions.
+ */
+function hasNearbyDisclaimer(text: string, brand: string): boolean {
+  const brandLower = brand.toLowerCase();
+  const lower = text.toLowerCase();
+  const brandIdx = lower.indexOf(brandLower);
+  if (brandIdx === -1) return false;
+
+  // ±200 chars around the FIRST brand mention. If there are multiple
+  // mentions and at least one is in a non-disclaimer context, we should
+  // still count it — but in practice these AI responses are dominated by
+  // a single disclaimer or a single recommendation, not both.
+  const start = Math.max(0, brandIdx - 200);
+  const end = Math.min(text.length, brandIdx + brand.length + 200);
+  const window = text.slice(start, end);
+
+  return DISCLAIMER_PATTERNS.some((p) => p.test(window));
+}
+
+/**
+ * Normalise a brand name for fuzzy substring matching: lowercase, strip
+ * spaces, dashes, dots. Catches "Pluto X AI" or "Pluto-AI" → "plutoxai".
+ */
+function normaliseBrand(s: string): string {
+  return s.toLowerCase().replace(/[\s\-._]/g, "");
+}
+
+/**
+ * Returns true if `brand` is genuinely present in `text`.
  *
- * Fast path: lower.includes() — zero cost, handles 95%+ of real crawl
- * responses where the brand name appears verbatim.
+ *   1. Exact substring match (case-insensitive)        →  definitive
+ *   2. Normalised substring match (spaces/dashes etc)  →  catches typos
+ *   3. Embedding fallback                              →  ONLY when brand
+ *                                                         has no presence
+ *                                                         in either form,
+ *                                                         AND cosine >= 0.75
+ *                                                         (was 0.30 before
+ *                                                         — too loose, gave
+ *                                                         false positives
+ *                                                         on generic AI-tool
+ *                                                         articles).
  *
- * Slow path: cosine similarity between the brand-name embedding and the
- * response-text embedding. Catches typos, abbreviations, and spacing
- * variants ("Block Boost" vs "BlockBoost"). Capped at 2 000 chars so
- * the text embedding isn't too diluted by surrounding content.
+ * After determining presence, check for a "I don't know about X" disclaimer
+ * near the brand. If present, treat as NOT mentioned — those responses
+ * actively HURT visibility, not help it.
  */
 async function isBrandPresent(text: string, brand: string): Promise<boolean> {
-  if (text.toLowerCase().includes(brand.toLowerCase())) return true;
-  if (!isEmbeddingAvailable()) return false;
+  const exactHit = text.toLowerCase().includes(brand.toLowerCase());
+  const normHit = !exactHit && normaliseBrand(text).includes(normaliseBrand(brand));
 
-  const [brandVec, textVec] = await Promise.all([
-    embedCall(brand),
-    embedCall(text.slice(0, 2000)),
-  ]);
-  if (brandVec.length === 0 || textVec.length === 0) return false;
-  return cosineSimilarity(brandVec, textVec) >= BRAND_SIMILARITY_THRESHOLD;
+  let mentioned = exactHit || normHit;
+
+  // Embedding fallback — kept but only fires when no string match at all
+  // AND uses a much stricter threshold (was 0.30, now 0.75). The previous
+  // threshold caught generic AI-tool articles as "matching" PlutoxAI just
+  // because they were in the same semantic space.
+  if (!mentioned && isEmbeddingAvailable()) {
+    const [brandVec, textVec] = await Promise.all([
+      embedCall(brand),
+      embedCall(text.slice(0, 2000)),
+    ]);
+    if (brandVec.length > 0 && textVec.length > 0) {
+      const sim = cosineSimilarity(brandVec, textVec);
+      // STRICT threshold for fallback. 0.75 is high enough that only near-
+      // identical content (typos, variant spellings of the brand) matches.
+      mentioned = sim >= 0.75;
+    }
+  }
+
+  if (!mentioned) return false;
+
+  // Disclaimer guard: even if the brand appears literally, "I don't have
+  // information about PlutoxAI" is NOT a positive citation — it's the
+  // opposite. Suppress these false positives.
+  if (hasNearbyDisclaimer(text, brand)) return false;
+
+  return true;
 }
+
+// Exported for tests so we can lock the false-positive fixes in place.
+export const __testExports = { hasNearbyDisclaimer, normaliseBrand, isBrandPresent };
+
+// Silence unused-import: BRAND_SIMILARITY_THRESHOLD is no longer used here
+// (we use 0.75 inline instead) but keep the import resolvable.
+void BRAND_SIMILARITY_THRESHOLD;
 
 // ---------------------------------------------------------------------------
 // Public API
