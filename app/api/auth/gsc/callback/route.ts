@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { exchangeCodeForTokens } from "@/lib/google-search-console";
+import { verifyOAuthState } from "@/lib/oauth-state";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -19,16 +20,13 @@ export async function GET(req: Request) {
     return NextResponse.redirect(`${baseUrl}/dashboard/settings?gsc=error`);
   }
 
-  // Decode state
-  let userId: string;
-  let source: string;
-  try {
-    const decoded = JSON.parse(Buffer.from(stateRaw, "base64url").toString("utf8"));
-    userId = decoded.userId;
-    source = decoded.source ?? "settings";
-  } catch {
-    return NextResponse.redirect(`${baseUrl}/dashboard/settings?gsc=error`);
+  // HMAC-verify the state. Previously trusted base64 JSON, which let attackers
+  // forge `userId` and bind their own Google account to a victim's record.
+  const verified = verifyOAuthState(stateRaw);
+  if (!verified) {
+    return NextResponse.redirect(`${baseUrl}/dashboard/settings?gsc=invalid-state`);
   }
+  const { userId, source } = verified;
 
   try {
     const tokens = await exchangeCodeForTokens(code);

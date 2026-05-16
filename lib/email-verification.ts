@@ -11,9 +11,27 @@
 import crypto from "crypto";
 
 const TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const MIN_SECRET_LENGTH = 32;
+
+/**
+ * Fail-closed: refuse to generate/validate tokens when the HMAC secret is
+ * missing or too short. The previous `?? ""` fallback meant a misconfigured
+ * env would silently issue tokens signed with the empty string — anyone
+ * who knew the format could forge them. (Audit finding 2026-05-16.)
+ */
+function requireSecret(): string {
+  const secret = process.env.EMAIL_UNSUBSCRIBE_SECRET;
+  if (!secret || secret.length < MIN_SECRET_LENGTH) {
+    throw new Error(
+      "EMAIL_UNSUBSCRIBE_SECRET is missing or too short (<32 chars). " +
+        "Refusing to issue/validate tokens with weak keying material."
+    );
+  }
+  return secret;
+}
 
 export function generateVerificationToken(userId: string): string {
-  const secret = process.env.EMAIL_UNSUBSCRIBE_SECRET ?? "";
+  const secret = requireSecret();
   const ts = Date.now().toString();
   const sig = crypto
     .createHmac("sha256", secret)
@@ -25,13 +43,22 @@ export function generateVerificationToken(userId: string): string {
 export function verifyVerificationToken(
   token: string
 ): { userId: string } | null {
-  const secret = process.env.EMAIL_UNSUBSCRIBE_SECRET ?? "";
+  let secret: string;
+  try {
+    secret = requireSecret();
+  } catch {
+    return null; // verify routes treat null as "invalid" — fail-closed
+  }
   const parts = token.split(".");
   if (parts.length !== 3) return null;
   const [userId, timestamp, providedSig] = parts;
   const ts = Number(timestamp);
   if (!Number.isFinite(ts)) return null;
   if (Date.now() - ts > TOKEN_TTL_MS) return null;
+
+  // Defensive: HMAC hex output is always exactly 64 chars, so reject obviously
+  // wrong-length inputs before timingSafeEqual (which requires equal lengths).
+  if (providedSig.length !== 64) return null;
 
   const expected = crypto
     .createHmac("sha256", secret)

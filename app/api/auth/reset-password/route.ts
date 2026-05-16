@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { validatePassword } from "@/lib/password-policy";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { getTokenSecretOrNull } from "@/lib/token-secret";
 
 const bodySchema = z.object({
   token: z.string().min(1),
@@ -14,7 +15,11 @@ const bodySchema = z.object({
 const TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 function verifyResetToken(token: string): { userId: string } | null {
-  const secret = process.env.EMAIL_UNSUBSCRIBE_SECRET ?? "";
+  // Fail-closed if secret is missing/too short — returning null here is the
+  // same external behaviour as an invalid token, so no information leak.
+  const secret = getTokenSecretOrNull();
+  if (!secret) return null;
+
   const parts = token.split(".");
   if (parts.length !== 3) return null;
 
@@ -23,15 +28,16 @@ function verifyResetToken(token: string): { userId: string } | null {
   if (!Number.isFinite(ts)) return null;
   if (Date.now() - ts > TOKEN_TTL_MS) return null;
 
+  // HMAC-SHA256 hex is always exactly 64 chars — reject obviously wrong
+  // lengths before timingSafeEqual (which crashes on length mismatch).
+  if (providedSig.length !== 64) return null;
+
   const expected = crypto
     .createHmac("sha256", secret)
     .update(`${userId}.${timestamp}`)
     .digest("hex");
 
-  if (
-    expected.length !== providedSig.length ||
-    !crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(providedSig))
-  ) {
+  if (!crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(providedSig))) {
     return null;
   }
 

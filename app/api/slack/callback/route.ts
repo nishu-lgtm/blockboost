@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { exchangeSlackCode } from "@/lib/slack";
+import { verifyOAuthState } from "@/lib/oauth-state";
 
 const APP_URL = process.env.NEXTAUTH_URL!;
 
@@ -19,15 +20,13 @@ export async function GET(req: Request) {
   }
 
   try {
-    // Decode state to get userId
-    const decoded = JSON.parse(Buffer.from(state, "base64url").toString("utf8")) as {
-      userId: string;
-    };
-    const userId = decoded.userId;
-
-    if (!userId) {
-      return NextResponse.redirect(`${settingsUrl}&slack=error`);
+    // HMAC-verify the state. Old code trusted unsigned base64 JSON, which
+    // let attackers bind their Slack webhook to a victim's user record.
+    const verified = verifyOAuthState(state);
+    if (!verified) {
+      return NextResponse.redirect(`${settingsUrl}&slack=invalid-state`);
     }
+    const userId = verified.userId;
 
     // Exchange code for webhook URL
     const { webhookUrl } = await exchangeSlackCode(code);

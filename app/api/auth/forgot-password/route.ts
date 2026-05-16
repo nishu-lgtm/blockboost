@@ -3,6 +3,7 @@ import { z } from "zod";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { requireTokenSecret } from "@/lib/token-secret";
 
 const bodySchema = z.object({
   email: z.string().email(),
@@ -12,7 +13,9 @@ const APP_URL = process.env.NEXTAUTH_URL ?? "https://blockboost.co";
 const FROM = process.env.EMAIL_FROM ?? "Tom from BlockBoost <tom@blockboost.co>";
 
 function generateResetToken(userId: string): string {
-  const secret = process.env.EMAIL_UNSUBSCRIBE_SECRET ?? "";
+  // Throws if EMAIL_UNSUBSCRIBE_SECRET is missing or too short — fail-closed
+  // instead of issuing forgeable tokens signed with the empty string.
+  const secret = requireTokenSecret();
   const timestamp = Date.now().toString();
   const payload = `${userId}.${timestamp}`;
   const signature = crypto
