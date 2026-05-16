@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -12,6 +13,7 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  Target,
 } from "lucide-react";
 import type { PromptRow, PromptResult } from "@/lib/visibility-types";
 
@@ -208,6 +210,15 @@ export function PromptTable({ rows }: Props) {
                     <tr key={`${row.promptId}-detail`} className="bg-indigo-50/30">
                       <td />
                       <td colSpan={ALL_PLATFORMS.length + 2} className="px-4 py-4">
+                        <div className="mb-3 flex justify-end">
+                          <Link
+                            href={`/dashboard/diagnose/${row.promptId}`}
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700 px-3 py-1.5 rounded-md hover:bg-indigo-50 border border-indigo-200"
+                          >
+                            <Target className="h-3 w-3" />
+                            Why am I {row.avgMentionRate >= 70 ? "winning" : row.avgMentionRate >= 30 ? "ranking like this" : "losing"} this query?
+                          </Link>
+                        </div>
                         <div className="space-y-3">
                           {ALL_PLATFORMS.map((pl) => {
                             const result = getResult(row, pl);

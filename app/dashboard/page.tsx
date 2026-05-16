@@ -21,6 +21,7 @@ import { computeNextActions } from "@/lib/retrieval-planner";
 import { NextActionCard } from "@/components/dashboard/next-action-card";
 import { DriftCard } from "@/components/dashboard/drift-card";
 import type { RetrievalAction } from "@/lib/retrieval-planner";
+import { bucketVisibilityScore } from "@/lib/score-bucket";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -175,19 +176,37 @@ function DashboardWithData({
   plannerRetrievabilityScore: number;
   plannerEntityCount: number;
 }) {
+  // Replace "0%" with human-readable bucket — pre-scan users were seeing a
+  // wall of zeros that made the product look broken. Now: "No data yet"
+  // before any scan, "Low"/"Medium"/"Strong" after.
+  const visibility = bucketVisibilityScore(visibilityScore, totalMentions);
+  const toneClass: Record<string, string> = {
+    slate: "text-slate-500",
+    red: "text-red-600",
+    amber: "text-amber-600",
+    emerald: "text-emerald-600",
+  };
+
   const stats = [
     {
-      label: "AI Visibility Score",
-      value: `${visibilityScore}%`,
-      change: null as string | null,
+      label: "AI Visibility",
+      // Show the label as the headline; the raw % is now a subtitle so
+      // power users can still see exact numbers when relevant.
+      value: visibility.label,
+      subValue: visibility.noData ? null : `${visibility.score}%`,
+      description: visibility.description,
       icon: BarChart3,
-      color: "text-indigo-600",
-      bg: "bg-indigo-50",
+      color: toneClass[visibility.tone],
+      bg: visibility.tone === "slate" ? "bg-slate-50"
+         : visibility.tone === "red" ? "bg-red-50"
+         : visibility.tone === "amber" ? "bg-amber-50"
+         : "bg-emerald-50",
     },
     {
       label: "Total Scans",
       value: totalMentions.toLocaleString(),
-      change: null,
+      subValue: null,
+      description: null,
       icon: Quote,
       color: "text-green-600",
       bg: "bg-green-50",
@@ -195,7 +214,8 @@ function DashboardWithData({
     {
       label: "AI Models Tracked",
       value: "3",
-      change: null,
+      subValue: null,
+      description: null,
       icon: Brain,
       color: "text-blue-600",
       bg: "bg-blue-50",
@@ -203,7 +223,8 @@ function DashboardWithData({
     {
       label: "Competitors",
       value: competitorCount.toString(),
-      change: null,
+      subValue: null,
+      description: null,
       icon: Users2,
       color: "text-purple-600",
       bg: "bg-purple-50",
@@ -234,15 +255,19 @@ function DashboardWithData({
                 <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${stat.bg}`}>
                   <stat.icon className={`h-4 w-4 ${stat.color}`} />
                 </div>
-                {stat.change && (
-                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
-                    <TrendingUp className="mr-1 h-3 w-3" />
-                    {stat.change}
-                  </Badge>
+                {stat.subValue && (
+                  <span className="text-xs font-medium text-slate-400 tabular-nums">
+                    {stat.subValue}
+                  </span>
                 )}
               </div>
               <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
               <p className="text-xs text-slate-500 mt-1">{stat.label}</p>
+              {stat.description && (
+                <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">
+                  {stat.description}
+                </p>
+              )}
             </CardContent>
           </Card>
         ))}
