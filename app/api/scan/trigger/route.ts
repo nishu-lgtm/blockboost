@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -47,24 +47,24 @@ export async function POST(req: Request) {
         `plan=${plan} platforms=${enabledPlatforms.join(",")}`
     );
 
-    // ASYNC: dispatch the scan in the background and return 202 immediately.
-    // Apify scrapers can take minutes; awaiting here would time out at the
-    // Vercel serverless function limit. The client polls /api/scan/status
-    // for completion. Errors are logged; the user sees the status flip in
-    // the UI when the scan finishes.
-    void runScan(projectId, plan)
-      .then((summary) => {
+    // BACKGROUND: use Next 16 `after()` to keep the Vercel function alive
+    // until the scan finishes, AFTER the response is sent. The previous
+    // `void runScan().then().catch()` pattern looked async but on Vercel
+    // serverless the function suspends as soon as the response goes out —
+    // so runScan() was being killed before it could call Apify, leaving
+    // users staring at "Results in 2-5 minutes" forever with zero mentions
+    // ever produced. (User bug report 2026-05-16, found via 0 Apify runs
+    // in account despite a queued scan.)
+    after(async () => {
+      try {
+        const summary = await runScan(projectId, plan);
         const mentionRate = summary.mentionRate ?? 0;
-        const topOpportunity = "Improve your AI visibility score";
-        return import("@/lib/email-triggers").then(({ onFirstScanComplete }) =>
-          onFirstScanComplete(userId, mentionRate, topOpportunity).catch((e) =>
-            console.error("[scan/trigger] onFirstScanComplete failed:", e)
-          )
-        );
-      })
-      .catch((err) =>
-        console.error(`[scan/trigger] Background scan failed for ${projectId}:`, err)
-      );
+        const { onFirstScanComplete } = await import("@/lib/email-triggers");
+        await onFirstScanComplete(userId, mentionRate, "Improve your AI visibility score");
+      } catch (err) {
+        console.error(`[scan/trigger] Background scan failed for ${projectId}:`, err);
+      }
+    });
 
     return NextResponse.json(
       {
