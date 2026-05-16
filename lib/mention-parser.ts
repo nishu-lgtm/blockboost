@@ -162,6 +162,12 @@ async function classifySentiment(
 // Hybrid brand detection — exact match fast path + embedding fallback
 // ---------------------------------------------------------------------------
 
+// Apostrophe character class — ChatGPT outputs curly Unicode apostrophes
+// (U+2019, ’) rather than plain ASCII ('). Matching only ASCII silently
+// missed every disclaimer in production. Use this in every regex below
+// instead of a bare `'`.
+const APOS = "['’]";
+
 // Phrases that indicate the AI explicitly DOESN'T know about the brand —
 // even though the brand name appears in the response (echoed from the
 // user's question). nishuprasad75 surfaced this on 2026-05-16: the parser
@@ -169,13 +175,13 @@ async function classifySentiment(
 // inflating the dashboard to 100% mention rate. These regex patterns
 // require the brand name to be near the disclaimer (same ~200-char window).
 const DISCLAIMER_PATTERNS = [
-  /\bI (?:don'?t|do not|cannot|can'?t|couldn'?t|wasn'?t|am not) (?:have|find|know|recognize|currently have) (?:[^.]*?)/i,
-  /\bI'?m not (?:familiar|aware) (?:with|of) /i,
-  /\bI (?:have|haven'?t had) (?:no|any) (?:information|knowledge|details|data) (?:about|on|of|for|regarding) /i,
-  /\bThere'?s no (?:reliable |publicly available |verifiable )?(?:information|data|details|public information) (?:about|on|for) /i,
-  /\bI (?:wasn'?t|was not) able to (?:find|locate|verify) /i,
-  /\bnot (?:a |an )?(?:real|established|well-known|recognized) (?:company|product|platform|brand|tool) /i,
-  /\b(?:no|insufficient|limited) information (?:is |was )?available (?:about|on) /i,
+  new RegExp(`\\bI (?:don${APOS}?t|do not|cannot|can${APOS}?t|couldn${APOS}?t|wasn${APOS}?t|am not) (?:have|find|know|recognize|currently have)\\b`, "i"),
+  new RegExp(`\\bI${APOS}?m not (?:familiar|aware) (?:with|of)\\b`, "i"),
+  new RegExp(`\\bI (?:have|haven${APOS}?t had) (?:no|any) (?:information|knowledge|details|data) (?:about|on|of|for|regarding)\\b`, "i"),
+  new RegExp(`\\bThere${APOS}?s no (?:reliable |publicly available |verifiable )?(?:information|data|details|public information) (?:about|on|for)\\b`, "i"),
+  new RegExp(`\\bI (?:wasn${APOS}?t|was not) able to (?:find|locate|verify)\\b`, "i"),
+  /\bnot (?:a |an )?(?:real|established|well-known|recognized) (?:company|product|platform|brand|tool)\b/i,
+  /\b(?:no|insufficient|limited) information (?:is |was )?available (?:about|on)\b/i,
 ];
 
 /**

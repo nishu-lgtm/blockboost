@@ -40,6 +40,19 @@ test("disclaimer: 'I don't have information about X' near brand → true", () =>
   assert.ok(hasNearbyDisclaimer(text, "PlutoxAI"));
 });
 
+test("disclaimer: CURLY APOSTROPHE version (ChatGPT actually outputs U+2019)", () => {
+  // The fix's second pass: real ChatGPT responses use the curly apostrophe
+  // U+2019 (’) rather than ASCII '. The original regex with bare ' silently
+  // missed every prod response. Locking in the multi-quote handling.
+  const text = "I don’t have information about PlutoxAI in my training data.";
+  assert.ok(hasNearbyDisclaimer(text, "PlutoxAI"));
+});
+
+test("disclaimer: 'I couldn’t find' (curly) near brand → true", () => {
+  const text = "I couldn’t find reliable public information about PlutoxAI.";
+  assert.ok(hasNearbyDisclaimer(text, "PlutoxAI"));
+});
+
 test("disclaimer: 'I couldn't find reliable public information' near brand → true", () => {
   // Another verbatim phrasing seen in PlutoxAI scan responses on 2026-05-16.
   const text = "I couldn't find reliable public information about a company called PlutoxAI.";
