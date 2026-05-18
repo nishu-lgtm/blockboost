@@ -17,7 +17,7 @@ export default async function EntitiesPage() {
   return (
     <div className="flex flex-col flex-1">
       <Topbar
-        title="Entity Graph"
+        title="Brand Knowledge"
         description="Extract and view brand entities — products, people, features, and their relationships"
       />
       <main className="flex-1 p-6">

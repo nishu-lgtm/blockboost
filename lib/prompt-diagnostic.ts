@@ -188,7 +188,7 @@ export async function diagnosePrompt(
     recommendedActions.push({
       title: `Write a comparison page targeting "${prompt.text}"`,
       detail:
-        `${competitorsSeen.slice(0, 3).join(", ")} appear in AI answers for this query while you don't. ` +
+        `${competitorsSeen.slice(0, 3).join(", ")} ${competitorsSeen.length === 1 ? "appears" : "appear"} in AI answers for this query while you don't. ` +
         `A dedicated comparison page (with structured "vs" sections) is the most direct fix.`,
       href: "/dashboard/content-briefs",
       impact: "high",

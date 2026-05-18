@@ -17,7 +17,7 @@ export default async function AiDeliveryPage() {
   return (
     <div className="flex flex-col flex-1">
       <Topbar
-        title="AI Delivery"
+        title="AI Brand Files"
         description="Machine-readable files for AI systems to accurately represent your brand"
       />
       <main className="flex-1 p-6">

@@ -83,7 +83,7 @@ export function DeliveryPanel({ projectId, brandName }: { projectId: string; bra
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Package className="h-4 w-4 text-indigo-500" />
-            AI Delivery Package — {brandName}
+            AI Brand Files — {brandName}
           </CardTitle>
           <p className="text-sm text-slate-500 mt-1">
             Generate machine-readable files for AI systems. Host{" "}

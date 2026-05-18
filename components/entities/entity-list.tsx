@@ -93,7 +93,7 @@ export function EntityList({ projectId }: { projectId: string }) {
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base">
             <Network className="h-4 w-4 text-violet-500" />
-            Entity Graph
+            Brand Knowledge
           </CardTitle>
           <Button variant="ghost" size="sm" onClick={loadGraph} disabled={loading}>
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
