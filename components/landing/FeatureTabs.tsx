@@ -101,7 +101,7 @@ const TABS = [
             <span className="text-xs font-bold text-amber-600 uppercase tracking-wider">Content Brief</span>
             <span className="text-xs bg-green-100 text-green-700 font-semibold px-2 py-0.5 rounded-full">Ready</span>
           </div>
-          <p className="text-sm font-bold text-gray-900 mb-2">"Best plumber in Austin"</p>
+          <p className="text-sm font-bold text-gray-900 mb-2">&ldquo;Best plumber in Austin&rdquo;</p>
           <div className="space-y-1.5">
             {["Target word count: 800-1000 words", "Include: Emergency services, reviews", "Schema: LocalBusiness + Service"].map((s) => (
               <p key={s} className="text-xs text-gray-500">✓ {s}</p>
@@ -143,7 +143,7 @@ const TABS = [
         </div>
         <div className="flex gap-2.5 justify-end">
           <div className="bg-amber-500 rounded-2xl rounded-tr-sm px-4 py-3 text-sm text-white max-w-xs">
-            Rival Plumbing has 3× more content targeting emergency plumbing queries. Their Google Business profile also has 40+ more reviews. I recommend publishing a page targeting "24/7 emergency plumber Austin."
+            Rival Plumbing has 3× more content targeting emergency plumbing queries. Their Google Business profile also has 40+ more reviews. I recommend publishing a page targeting &ldquo;24/7 emergency plumber Austin.&rdquo;
           </div>
           <div className="w-7 h-7 bg-amber-100 rounded-full flex items-center justify-center shrink-0 mt-0.5">
             <span className="text-xs">⚡</span>

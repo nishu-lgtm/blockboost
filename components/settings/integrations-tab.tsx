@@ -91,6 +91,8 @@ export function IntegrationsTab({ gscConnected: initialConnected, gscProperty: i
                 </ul>
               </div>
 
+              {/* OAuth start endpoint — full-page redirect required, not a Next page. */}
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
               <a href="/api/auth/gsc/connect?source=settings">
                 <Button className="gap-2 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 shadow-sm">
                   <GoogleLogo className="w-4 h-4" />
@@ -126,6 +128,7 @@ export function IntegrationsTab({ gscConnected: initialConnected, gscProperty: i
 
               {/* Actions */}
               <div className="flex flex-wrap gap-2">
+                {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
                 <a href="/api/auth/gsc/connect?source=settings">
                   <Button variant="outline" size="sm" className="h-9 border-slate-300 text-slate-700 gap-1.5">
                     <GoogleLogo className="w-3.5 h-3.5" />

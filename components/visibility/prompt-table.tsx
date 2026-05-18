@@ -32,6 +32,25 @@ const SENTIMENT_STYLE: Record<string, string> = {
 type SortKey = "prompt" | "avg";
 type SortDir = "asc" | "desc";
 
+// Static helper component — declared at module scope so React doesn't
+// re-create it (and reset its identity) on every parent render.
+function SortIcon({
+  col,
+  sortKey,
+  sortDir,
+}: {
+  col: SortKey;
+  sortKey: SortKey;
+  sortDir: SortDir;
+}) {
+  if (sortKey !== col) return <ArrowUpDown className="h-3 w-3 text-slate-400" />;
+  return sortDir === "asc" ? (
+    <ArrowUp className="h-3 w-3 text-indigo-600" />
+  ) : (
+    <ArrowDown className="h-3 w-3 text-indigo-600" />
+  );
+}
+
 interface Props {
   rows: PromptRow[];
 }
@@ -71,13 +90,6 @@ export function PromptTable({ rows }: Props) {
       });
   }, [rows, search, sortKey, sortDir]);
 
-  function SortIcon({ col }: { col: SortKey }) {
-    if (sortKey !== col) return <ArrowUpDown className="h-3 w-3 text-slate-400" />;
-    return sortDir === "asc"
-      ? <ArrowUp className="h-3 w-3 text-indigo-600" />
-      : <ArrowDown className="h-3 w-3 text-indigo-600" />;
-  }
-
   function getResult(row: PromptRow, platform: string): PromptResult | undefined {
     return row.results.find((r) => r.platform === platform);
   }
@@ -106,7 +118,7 @@ export function PromptTable({ rows }: Props) {
                   onClick={() => handleSort("prompt")}
                   className="flex items-center gap-1 font-medium text-slate-600 hover:text-slate-900"
                 >
-                  Prompt <SortIcon col="prompt" />
+                  Prompt <SortIcon col="prompt" sortKey={sortKey} sortDir={sortDir} />
                 </button>
               </th>
               {ALL_PLATFORMS.map((pl) => (
@@ -122,7 +134,7 @@ export function PromptTable({ rows }: Props) {
                   onClick={() => handleSort("avg")}
                   className="flex items-center gap-1 font-medium text-slate-600 hover:text-slate-900 ml-auto"
                 >
-                  Avg <SortIcon col="avg" />
+                  Avg <SortIcon col="avg" sortKey={sortKey} sortDir={sortDir} />
                 </button>
               </th>
             </tr>
