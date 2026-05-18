@@ -17,7 +17,12 @@ import {
 } from "lucide-react";
 import type { PromptRow, PromptResult } from "@/lib/visibility-types";
 
-const ALL_PLATFORMS = ["ChatGPT", "Perplexity", "Gemini", "Copilot", "Grok", "Google AIO"];
+// Platforms shown as columns in the prompt-level breakdown. We only show
+// platforms we actually scan today. Grok / Copilot / Google AIO are
+// removed entirely (no live integration). Perplexity is listed but marked
+// "Coming soon" — the API is wired up but not turned on by default.
+const ALL_PLATFORMS = ["ChatGPT", "Gemini", "Perplexity"] as const;
+const COMING_SOON_PLATFORMS = new Set<string>(["Perplexity"]);
 
 // Category surfaces as a small uppercase label — color removed for restraint.
 // Category meaning was never load-bearing; the prompt text carries intent.
@@ -126,7 +131,14 @@ export function PromptTable({ rows }: Props) {
                   key={pl}
                   className="px-2 py-2.5 text-center font-medium text-slate-500 whitespace-nowrap"
                 >
-                  {pl}
+                  <div className="inline-flex flex-col items-center leading-tight">
+                    <span>{pl}</span>
+                    {COMING_SOON_PLATFORMS.has(pl) && (
+                      <span className="text-[9px] uppercase tracking-wider text-slate-400 font-normal mt-0.5">
+                        Coming soon
+                      </span>
+                    )}
+                  </div>
                 </th>
               ))}
               <th className="px-3 py-2.5 text-right">
@@ -173,6 +185,15 @@ export function PromptTable({ rows }: Props) {
                       </div>
                     </td>
                     {ALL_PLATFORMS.map((pl) => {
+                      if (COMING_SOON_PLATFORMS.has(pl)) {
+                        return (
+                          <td key={pl} className="px-2 py-3 text-center">
+                            <span className="text-[10px] uppercase tracking-wider text-slate-300">
+                              Soon
+                            </span>
+                          </td>
+                        );
+                      }
                       const result = getResult(row, pl);
                       if (!result) {
                         return (
@@ -224,6 +245,7 @@ export function PromptTable({ rows }: Props) {
                         </div>
                         <div className="space-y-3">
                           {ALL_PLATFORMS.map((pl) => {
+                            if (COMING_SOON_PLATFORMS.has(pl)) return null;
                             const result = getResult(row, pl);
                             if (!result) return null;
                             return (
