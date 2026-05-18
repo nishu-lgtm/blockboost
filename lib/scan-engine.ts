@@ -37,25 +37,35 @@ export interface ScanSummary {
  */
 export function platformsForPlan(plan: string): Platform[] {
   // ─────────────────────────────────────────────────────────────────────
-  // PERPLEXITY DISABLED 2026-05-18 (rolled back from 2026-05-16 inclusion).
+  // 2026-05-18 platform availability:
   //
-  // The `zhorex/perplexity-ai-scraper` Apify actor is unreliable:
-  //   • Times out (60-90s) on a single query → multiplies by N prompts ×
-  //     3 retries = blocks the Vercel function past its 300s maxDuration.
-  //     ChatGPT results never get written because Promise.all is waiting
-  //     on Perplexity.
-  //   • Even when it doesn't time out it scrapes UI chrome — the answer
-  //     field contains "Cookie Policy / Thinking / Sign In" placeholder
-  //     text rather than Perplexity's real response. Parser finds 0
-  //     mentions in garbage, falsely reporting 0% Perplexity visibility.
+  //   CHATGPT             ✓  Apify tri_angle/gpt-search — verified reliable
+  //   PERPLEXITY          ✓  Official Sonar API (lib/perplexity-api.ts)
+  //                          — gated on PERPLEXITY_API_KEY env var.
+  //                          Replaces the broken Apify actor that
+  //                          returned UI chrome instead of real answers.
+  //   GOOGLE_AI_OVERVIEWS ✗  Still disabled — unverified Apify actor
+  //                          (zhorex/google-ai-overviews-scraper). Same
+  //                          risk class as the old Perplexity actor was.
+  //                          Re-enable when an API-based path exists or
+  //                          a different actor is verified.
+  //   GEMINI / COPILOT / GROK ✗  No working scraper or API integration yet.
   //
-  // GOOGLE_AI_OVERVIEWS DISABLED 2026-05-18 (same risk class — unverified
-  // scraper, similar timeout/garbage failure modes likely).
-  //
-  // Both will return when a verified scraper exists. Tracking issue:
-  // OPS.md "Multi-platform scrapers". Until then, ChatGPT is the only
-  // platform that produces trustworthy data.
+  // Perplexity is only added to the plan list when the API key is present.
+  // Without the key, runScraper falls through to a graceful no-op (empty
+  // results, no scan failure).
   // ─────────────────────────────────────────────────────────────────────
+  const platforms: Platform[] = [Platform.CHATGPT];
+
+  // Perplexity is universally available on all plans — it's a flat $1/M
+  // token API cost we eat as a platform feature rather than gating by plan.
+  // Plan-based gating can be added later once we have usage cost data.
+  if (process.env.PERPLEXITY_API_KEY) {
+    platforms.push(Platform.PERPLEXITY);
+  }
+
+  // Plan tiers reserved for future capacity controls (e.g., per-platform
+  // run counts, additional platforms when GAIO/Gemini scrapers land).
   switch (plan) {
     case "FREE":
     case "STARTER":
@@ -63,7 +73,7 @@ export function platformsForPlan(plan: string): Platform[] {
     case "AGENCY":
     case "ENTERPRISE":
     default:
-      return [Platform.CHATGPT];
+      return platforms;
   }
 }
 
@@ -81,9 +91,23 @@ export async function runScraper(
     case Platform.CHATGPT:
       results = await runChatGPTScraper(prompts);
       break;
-    case Platform.PERPLEXITY:
-      results = await runPerplexityScraper(prompts);
+    case Platform.PERPLEXITY: {
+      // Use the official Perplexity Sonar API (lib/perplexity-api.ts)
+      // instead of the broken Apify actor. Falls back to empty results
+      // if PERPLEXITY_API_KEY isn't set in env — graceful no-op rather
+      // than burning function time on a feature the deployment isn't
+      // configured for.
+      const { runPerplexityApi, isPerplexityApiAvailable } = await import(
+        "@/lib/perplexity-api"
+      );
+      if (!isPerplexityApiAvailable()) {
+        console.warn("[scan-engine] PERPLEXITY_API_KEY missing — Perplexity skipped");
+        results = [];
+      } else {
+        results = await runPerplexityApi(prompts);
+      }
       break;
+    }
     case Platform.GOOGLE_AI_OVERVIEWS:
       results = await runGoogleAIOverviewsScraper(prompts);
       break;
