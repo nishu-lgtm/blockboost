@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { RefreshCw, FlaskConical, CheckCircle } from "lucide-react";
+import { FlaskConical, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // sessionStorage key — persists the verified state across router.refresh()
@@ -22,7 +22,13 @@ export function BotTrafficActions() {
   const [testing, setTesting] = useState(false);
   // Initialise from sessionStorage so the checkmark survives router.refresh()
   const [tested, setTested] = useState(readVerified);
-  const [refreshing, setRefreshing] = useState(false);
+
+  // U6 — auto-refresh server props every 60s. Replaces the old visible
+  // Refresh button; data freshness is a system concern.
+  useEffect(() => {
+    const id = window.setInterval(() => router.refresh(), 60_000);
+    return () => window.clearInterval(id);
+  }, [router]);
 
   async function handleTest() {
     setTesting(true);
@@ -36,31 +42,14 @@ export function BotTrafficActions() {
     }
   }
 
-  function handleRefresh() {
-    setRefreshing(true);
-    router.refresh();
-    setTimeout(() => setRefreshing(false), 800);
-  }
-
   return (
     <div className="flex items-center gap-2">
       <Button
         size="sm"
         variant="outline"
-        onClick={handleRefresh}
-        disabled={refreshing}
-        className="h-8 text-xs"
-      >
-        <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${refreshing ? "animate-spin" : ""}`} />
-        Refresh
-      </Button>
-
-      <Button
-        size="sm"
-        variant="outline"
         onClick={handleTest}
         disabled={testing}
-        className="h-8 text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+        className="h-8 text-xs"
       >
         {tested ? (
           <>

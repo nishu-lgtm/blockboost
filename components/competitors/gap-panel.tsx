@@ -3,13 +3,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
-  Zap,
   FileText,
   Loader2,
   CheckCircle2,
-  Lightbulb,
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
@@ -66,22 +63,24 @@ export function GapPanel({ projectId, allBrands, onGenerateBrief, generatingBrie
     }
   }, [projectId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    // U6 — auto-refresh every 60s. No visible refresh control; system handles freshness.
+    const id = window.setInterval(load, 60_000);
+    return () => window.clearInterval(id);
+  }, [load]);
 
   return (
     <Card className="border-slate-200">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Zap className="h-4 w-4 text-amber-500" />
-            <CardTitle className="text-base font-semibold text-slate-800">
-              Content Gap Intelligence
-            </CardTitle>
-          </div>
+          <CardTitle className="text-base font-semibold text-slate-900">
+            Content Gap Intelligence
+          </CardTitle>
           {rows && rows.length > 0 && (
-            <Badge className="bg-red-50 text-red-600 border-red-200 text-xs" variant="outline">
+            <span className="text-xs text-slate-500 tabular-nums">
               {rows.length} gap{rows.length !== 1 ? "s" : ""}
-            </Badge>
+            </span>
           )}
         </div>
         <p className="text-xs text-slate-500 mt-1">
@@ -127,7 +126,7 @@ export function GapPanel({ projectId, allBrands, onGenerateBrief, generatingBrie
                 >
                   {/* Row header */}
                   <button
-                    className="w-full flex items-start gap-3 px-3 py-3 bg-red-50/50 hover:bg-red-50 transition-colors text-left"
+                    className="w-full flex items-start gap-3 px-3 py-3 hover:bg-slate-50 transition-colors text-left"
                     onClick={() => setExpanded(isOpen ? null : row.promptId)}
                   >
                     <ScorePip score={row.gapScore} />
@@ -136,26 +135,26 @@ export function GapPanel({ projectId, allBrands, onGenerateBrief, generatingBrie
                       <p className="text-xs text-slate-700 line-clamp-2 leading-relaxed">
                         {row.promptText}
                       </p>
-                      <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                      <div className="flex flex-wrap items-center gap-2 mt-1.5">
                         {row.intent && INTENT_LABEL[row.intent] && (
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-slate-500 border-slate-200">
+                          <span className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">
                             {INTENT_LABEL[row.intent]}
-                          </Badge>
+                          </span>
                         )}
                         {row.competitorsPresent.map((comp) => {
                           const idx = allBrands.indexOf(comp);
                           return (
-                            <Badge
+                            <span
                               key={comp}
-                              variant="outline"
-                              className="text-[10px] px-1.5 py-0"
-                              style={{
-                                borderColor: BRAND_COLORS[idx] ?? "#94a3b8",
-                                color: BRAND_COLORS[idx] ?? "#64748b",
-                              }}
+                              className="inline-flex items-center gap-1 text-[11px] text-slate-600"
                             >
+                              <span
+                                aria-hidden
+                                className="h-1.5 w-1.5 rounded-full shrink-0"
+                                style={{ backgroundColor: BRAND_COLORS[idx] ?? "#94a3b8" }}
+                              />
                               {comp}
-                            </Badge>
+                            </span>
                           );
                         })}
                         {row.missingEntities.length > 0 && (
@@ -178,26 +177,19 @@ export function GapPanel({ projectId, allBrands, onGenerateBrief, generatingBrie
                   {isOpen && (
                     <div className="px-3 py-3 bg-white border-t border-slate-100 space-y-3">
                       {/* Content hint */}
-                      <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-100 p-3">
-                        <Lightbulb className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
-                        <p className="text-xs text-amber-800 leading-relaxed">{row.contentHint}</p>
-                      </div>
+                      <p className="text-xs text-slate-600 leading-relaxed">{row.contentHint}</p>
 
                       {/* Missing entity tags */}
                       {row.missingEntities.length > 0 && (
                         <div>
-                          <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wide mb-1.5">
+                          <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wider mb-1.5">
                             Missing entity coverage
                           </p>
-                          <div className="flex flex-wrap gap-1.5">
+                          <div className="flex flex-wrap gap-x-3 gap-y-1">
                             {row.missingEntities.map((e) => (
-                              <Badge
-                                key={e}
-                                variant="outline"
-                                className="text-xs bg-violet-50 text-violet-700 border-violet-200"
-                              >
+                              <span key={e} className="text-xs text-slate-600">
                                 {e}
-                              </Badge>
+                              </span>
                             ))}
                           </div>
                         </div>
@@ -208,7 +200,7 @@ export function GapPanel({ projectId, allBrands, onGenerateBrief, generatingBrie
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-8 text-xs border-indigo-300 text-indigo-700 hover:bg-indigo-50 gap-1.5"
+                          className="h-8 text-xs gap-1.5"
                           disabled={generatingBrief === row.promptId}
                           onClick={() => onGenerateBrief(row.promptId, row.promptText)}
                         >

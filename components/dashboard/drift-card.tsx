@@ -2,9 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
-  Sparkles,
   TrendingUp,
   TrendingDown,
   UserPlus,
@@ -16,30 +14,9 @@ import {
 import type { DriftReport, DriftItem, SentimentShift } from "@/lib/drift-detector";
 
 const CATEGORIES = [
-  {
-    key: "newCitations" as const,
-    label: "New citations",
-    icon: TrendingUp,
-    iconColor: "text-emerald-500",
-    iconBg: "bg-emerald-50",
-    badgeColor: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  },
-  {
-    key: "lostCitations" as const,
-    label: "Lost citations",
-    icon: TrendingDown,
-    iconColor: "text-red-500",
-    iconBg: "bg-red-50",
-    badgeColor: "bg-red-50 text-red-700 border-red-200",
-  },
-  {
-    key: "newCompetitors" as const,
-    label: "New competitor entrants",
-    icon: UserPlus,
-    iconColor: "text-amber-500",
-    iconBg: "bg-amber-50",
-    badgeColor: "bg-amber-50 text-amber-700 border-amber-200",
-  },
+  { key: "newCitations" as const,   label: "New citations",          icon: TrendingUp,   iconColor: "text-emerald-500" },
+  { key: "lostCitations" as const,  label: "Lost citations",         icon: TrendingDown, iconColor: "text-red-500" },
+  { key: "newCompetitors" as const, label: "New competitor entrants",icon: UserPlus,     iconColor: "text-amber-500" },
 ];
 
 function SentimentIcon({ direction }: { direction: "improved" | "regressed" }) {
@@ -70,7 +47,13 @@ export function DriftCard({ projectId }: { projectId: string }) {
     }
   }, [projectId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    // U6 — auto-refresh: poll every 60s while card is mounted. No visible
+    // Refresh button. Data freshness is a system concern, not a user task.
+    const id = window.setInterval(load, 60_000);
+    return () => window.clearInterval(id);
+  }, [load]);
 
   if (loading) {
     return (
@@ -127,13 +110,12 @@ export function DriftCard({ projectId }: { projectId: string }) {
     <Card className="border-slate-200">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Sparkles className="h-4 w-4 text-indigo-500" />
+          <CardTitle className="text-base font-semibold text-slate-900">
             What changed this week
           </CardTitle>
-          <Badge variant="outline" className="text-xs text-slate-500">
+          <span className="text-xs text-slate-500 tabular-nums">
             {report.totalChanges} change{report.totalChanges !== 1 ? "s" : ""}
-          </Badge>
+          </span>
         </div>
         <p className="text-xs text-slate-500 mt-1">
           AI answer drift over the last {report.windowDays} days vs. the {report.windowDays} days before.

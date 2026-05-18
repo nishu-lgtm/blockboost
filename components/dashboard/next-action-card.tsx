@@ -1,9 +1,9 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { DotBadge, type DotTone } from "@/components/ui/dot-badge";
 import Link from "next/link";
-import { Zap, BarChart3, Globe, Network, Package, ChevronRight } from "lucide-react";
+import { BarChart3, Globe, Network, Package, ChevronRight } from "lucide-react";
 import type { RetrievalAction } from "@/lib/retrieval-planner";
 
 const CATEGORY_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -20,10 +20,10 @@ const CATEGORY_HREF: Record<string, string> = {
   delivery: "/dashboard/ai-delivery",
 };
 
-const IMPACT_STYLE: Record<string, string> = {
-  high: "bg-red-50 text-red-600 border-red-200",
-  medium: "bg-amber-50 text-amber-600 border-amber-200",
-  low: "bg-slate-50 text-slate-600 border-slate-200",
+const IMPACT_TONE: Record<string, DotTone> = {
+  high: "critical",
+  medium: "high",
+  low: "medium",
 };
 
 interface Props {
@@ -37,10 +37,9 @@ export function NextActionCard({ actions, visibilityScore, retrievabilityScore, 
   if (actions.length === 0) return null;
 
   return (
-    <Card className="border-indigo-100 bg-gradient-to-br from-indigo-50/40 to-white">
+    <Card className="border-slate-200">
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Zap className="h-4 w-4 text-indigo-500" />
+        <CardTitle className="text-base font-semibold text-slate-900">
           Recommended next actions
         </CardTitle>
         <div className="flex gap-3 mt-1 flex-wrap">
@@ -59,32 +58,28 @@ export function NextActionCard({ actions, visibilityScore, retrievabilityScore, 
       </CardHeader>
       <CardContent className="space-y-2 pt-2">
         {actions.map((action) => {
-          const Icon = CATEGORY_ICON[action.category] ?? Zap;
+          const Icon = CATEGORY_ICON[action.category] ?? BarChart3;
           const href = CATEGORY_HREF[action.category] ?? "/dashboard";
           return (
-            <div
+            <Link
               key={action.priority}
-              className="flex items-start gap-3 p-3 bg-white rounded-lg border border-slate-100 hover:border-indigo-100 transition-colors"
+              href={href}
+              className="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors group"
             >
-              <div className="mt-0.5 h-7 w-7 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
-                <Icon className="h-3.5 w-3.5 text-indigo-500" />
+              <div className="mt-0.5 h-7 w-7 rounded-lg bg-slate-50 flex items-center justify-center shrink-0">
+                <Icon className="h-3.5 w-3.5 text-slate-500" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                  <span className="text-sm font-medium text-slate-800">{action.title}</span>
-                  <Badge className={`text-xs border ${IMPACT_STYLE[action.impact]}`} variant="outline">
+                <div className="flex items-center gap-3 flex-wrap mb-0.5">
+                  <span className="text-sm font-semibold text-slate-900">{action.title}</span>
+                  <DotBadge tone={IMPACT_TONE[action.impact] ?? "medium"}>
                     {action.impact} impact
-                  </Badge>
+                  </DotBadge>
                 </div>
                 <p className="text-xs text-slate-500">{action.description}</p>
               </div>
-              <Link
-                href={href}
-                className="shrink-0 flex items-center text-xs font-medium text-indigo-600 hover:text-indigo-700 px-2 py-1 rounded hover:bg-indigo-50 transition-colors"
-              >
-                Go <ChevronRight className="h-3 w-3 ml-0.5" />
-              </Link>
-            </div>
+              <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-slate-500 shrink-0 transition-colors mt-1" />
+            </Link>
           );
         })}
       </CardContent>

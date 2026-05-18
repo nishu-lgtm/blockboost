@@ -26,6 +26,8 @@ import { computeVisibilitySegments } from "@/lib/visibility-segments";
 import { computeScoreBreakdown, type ScoreBreakdown } from "@/lib/score-breakdown";
 import { ScoreBreakdownCard } from "@/components/dashboard/score-breakdown-card";
 import { platformsForPlan } from "@/lib/scan-engine";
+import { HeroCard } from "@/components/dashboard/hero-card";
+import { StatStrip } from "@/components/dashboard/stat-strip";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -212,113 +214,85 @@ function DashboardWithData({
   plannerEntityCount: number;
   scoreBreakdown: ScoreBreakdown | null;
 }) {
-  // Bucket the weighted score (visibilityScore is now segments.weightedScore,
-  // not raw mention rate — see app/dashboard/page.tsx default export).
+  // Apple-style hero-first layout. Was 5 stacked cards competing for
+  // attention. Now: HeroCard with the headline score + most-important
+  // action → StatStrip with secondary metrics → DriftCard + ScoreBreakdown
+  // collapsed below ("details" / "what changed").
+  //
+  // The headline is the weighted AI Visibility score (matches the
+  // shareable report's headline + every external auditor's framing).
   const visibility = bucketVisibilityScore(visibilityScore, totalMentions);
-  const toneClass: Record<string, string> = {
-    slate: "text-slate-500",
-    red: "text-red-600",
-    amber: "text-amber-600",
-    emerald: "text-emerald-600",
-  };
 
-  // Override the generic description with the more diagnostic
-  // "Unbranded discovery: X%" line when we have segment data. That's the
-  // single number that tells the truth about real AI visibility.
-  const visibilityDescription = visibility.noData
-    ? visibility.description
+  // Hero description: lead with the diagnostic unbranded number when
+  // available. That's the single piece of context most worth showing
+  // before the user expands details.
+  const heroDescription = visibility.noData
+    ? "Run your first AI scan to see how AI assistants describe your brand."
     : unbrandedRate !== null
-      ? `Unbranded discovery: ${unbrandedRate}% · weighted from branded + unbranded segments.`
+      ? `${unbrandedRate}% unbranded discovery — how often AI surfaces your brand on queries that don't already name it. The headline weighs unbranded 70%, branded recall 30%.`
       : visibility.description;
 
-  const stats = [
+  // Promote the highest-priority planner action into the hero CTA.
+  // Anything beyond the first remains in the collapsed details below
+  // alongside the score breakdown drivers.
+  const heroAction = plannerActions[0]
+    ? {
+        title: plannerActions[0].title,
+        description: plannerActions[0].description,
+        // Map planner action's category → page deep link
+        href:
+          plannerActions[0].category === "visibility"
+            ? "/dashboard/ai-visibility"
+            : plannerActions[0].category === "retrieval"
+              ? "/dashboard/audit"
+              : plannerActions[0].category === "entities"
+                ? "/dashboard/entities"
+                : "/dashboard/ai-delivery",
+        impact: plannerActions[0].impact,
+      }
+    : undefined;
+
+  const statStripStats = [
+    { value: totalMentions.toLocaleString(), label: "Total scans" },
+    { value: String(aiModelsTracked), label: "AI models tracked", hint: aiModelsTracked === 1 ? "ChatGPT" : `${aiModelsTracked} platforms` },
+    { value: String(competitorCount), label: "Competitors" },
     {
-      label: "AI Visibility",
-      // Show the label as the headline; the raw % is now a subtitle so
-      // power users can still see exact numbers when relevant.
-      value: visibility.label,
-      subValue: visibility.noData ? null : `${visibility.score}/100`,
-      description: visibilityDescription,
-      icon: BarChart3,
-      color: toneClass[visibility.tone],
-      bg: visibility.tone === "slate" ? "bg-slate-50"
-         : visibility.tone === "red" ? "bg-red-50"
-         : visibility.tone === "amber" ? "bg-amber-50"
-         : "bg-emerald-50",
-    },
-    {
-      label: "Total Scans",
-      value: totalMentions.toLocaleString(),
-      subValue: null,
-      description: null,
-      icon: Quote,
-      color: "text-green-600",
-      bg: "bg-green-50",
-    },
-    {
-      label: "AI Models Tracked",
-      value: String(aiModelsTracked),
-      subValue: null,
-      description: null,
-      icon: Brain,
-      color: "text-blue-600",
-      bg: "bg-blue-50",
-    },
-    {
-      label: "Competitors",
-      value: competitorCount.toString(),
-      subValue: null,
-      description: null,
-      icon: Users2,
-      color: "text-purple-600",
-      bg: "bg-purple-50",
+      value: visibility.noData ? "—" : `${unbrandedRate ?? 0}%`,
+      label: "Unbranded discovery",
+      hint: "the truth metric",
     },
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Next actions */}
-      {plannerActions.length > 0 && (
+    <div className="space-y-4">
+      {/* Hero: headline score + primary CTA */}
+      <HeroCard
+        label="AI Visibility"
+        value={visibility.noData ? "—" : String(visibility.score)}
+        valueSuffix={visibility.noData ? undefined : "/100"}
+        status={visibility.label}
+        description={heroDescription}
+        action={heroAction}
+      />
+
+      {/* Secondary metrics: spatial separation, no extra visual weight */}
+      <StatStrip stats={statStripStats} />
+
+      {/* Drift card — what changed since last week */}
+      <DriftCard projectId={projectId} />
+
+      {/* Score breakdown drivers (why the headline is what it is) */}
+      {scoreBreakdown && <ScoreBreakdownCard breakdown={scoreBreakdown} />}
+
+      {/* Remaining ranked actions (the first is already in the hero) */}
+      {plannerActions.length > 1 && (
         <NextActionCard
-          actions={plannerActions}
+          actions={plannerActions.slice(1)}
           visibilityScore={visibilityScore}
           retrievabilityScore={plannerRetrievabilityScore}
           entityCount={plannerEntityCount}
         />
       )}
-
-      {/* Score breakdown — why the headline number is what it is */}
-      {scoreBreakdown && <ScoreBreakdownCard breakdown={scoreBreakdown} />}
-
-      {/* Weekly drift */}
-      <DriftCard projectId={projectId} />
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => (
-          <Card key={stat.label} className="border-slate-200">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${stat.bg}`}>
-                  <stat.icon className={`h-4 w-4 ${stat.color}`} />
-                </div>
-                {stat.subValue && (
-                  <span className="text-xs font-medium text-slate-400 tabular-nums">
-                    {stat.subValue}
-                  </span>
-                )}
-              </div>
-              <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
-              <p className="text-xs text-slate-500 mt-1">{stat.label}</p>
-              {stat.description && (
-                <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">
-                  {stat.description}
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent scans */}

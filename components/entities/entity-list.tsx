@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Network, RefreshCw } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 interface EntityNode {
   id: string;
@@ -56,7 +56,12 @@ export function EntityList({ projectId }: { projectId: string }) {
     }
   }, [projectId]);
 
-  useEffect(() => { loadGraph(); }, [loadGraph]);
+  useEffect(() => {
+    loadGraph();
+    // U6 — auto-refresh every 60s; no visible refresh button.
+    const id = window.setInterval(loadGraph, 60_000);
+    return () => window.clearInterval(id);
+  }, [loadGraph]);
 
   async function extract() {
     if (!text.trim()) return;
@@ -90,15 +95,9 @@ export function EntityList({ projectId }: { projectId: string }) {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Network className="h-4 w-4 text-violet-500" />
-            Brand Knowledge
-          </CardTitle>
-          <Button variant="ghost" size="sm" onClick={loadGraph} disabled={loading}>
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-          </Button>
-        </div>
+        <CardTitle className="text-base font-semibold text-slate-900">
+          Brand Knowledge
+        </CardTitle>
         <p className="text-sm text-slate-500 mt-1">
           Paste content below to extract entities, or view the current graph.
         </p>

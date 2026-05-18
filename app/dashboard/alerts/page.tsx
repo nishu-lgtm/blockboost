@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import {
   TrendingDown, Link2, Zap, AlertTriangle, CheckCircle,
-  Bell, Loader2, RefreshCw, CheckCheck,
+  Bell, Loader2, CheckCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -201,6 +201,9 @@ export default function AlertsPage() {
 
   useEffect(() => {
     loadAlerts();
+    // U6 — auto-refresh every 60s, no visible Refresh button.
+    const id = window.setInterval(loadAlerts, 60_000);
+    return () => window.clearInterval(id);
   }, [loadAlerts]);
 
   async function markRead(alertId: string) {
@@ -255,16 +258,6 @@ export default function AlertsPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-slate-200 text-slate-600 gap-1.5 h-8"
-              onClick={loadAlerts}
-              disabled={loading}
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-              Refresh
-            </Button>
             {unreadCount > 0 && (
               <Button
                 variant="outline"

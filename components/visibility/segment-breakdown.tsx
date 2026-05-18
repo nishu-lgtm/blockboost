@@ -1,8 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tag, Globe2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { DotBadge, type DotTone } from "@/components/ui/dot-badge";
 import type { VisibilitySegmentLite } from "@/lib/visibility-types";
 
 /**
@@ -22,11 +21,11 @@ interface Props {
   brandName: string;
 }
 
-function rateTone(rate: number): { color: string; bg: string; label: string } {
-  if (rate >= 60) return { color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-200", label: "Strong" };
-  if (rate >= 30) return { color: "text-amber-600", bg: "bg-amber-50 border-amber-200", label: "Medium" };
-  if (rate > 0) return { color: "text-red-600", bg: "bg-red-50 border-red-200", label: "Low" };
-  return { color: "text-red-700", bg: "bg-red-50 border-red-300", label: "Critical" };
+function rateTone(rate: number): { color: string; tone: DotTone; label: string } {
+  if (rate >= 60) return { color: "text-emerald-600", tone: "strong",   label: "Strong" };
+  if (rate >= 30) return { color: "text-amber-600",   tone: "high",     label: "Medium" };
+  if (rate > 0)   return { color: "text-red-600",     tone: "critical", label: "Low" };
+  return            { color: "text-red-600",          tone: "critical", label: "Critical" };
 }
 
 export function SegmentBreakdown({ branded, unbranded, weightedScore, brandName }: Props) {
@@ -41,8 +40,7 @@ export function SegmentBreakdown({ branded, unbranded, weightedScore, brandName 
   return (
     <Card className="border-slate-200">
       <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
-          <Globe2 className="h-4 w-4 text-indigo-500" />
+        <CardTitle className="text-base font-semibold text-slate-900">
           Branded vs Unbranded Visibility
         </CardTitle>
         <p className="text-xs text-slate-500 mt-1">
@@ -53,19 +51,17 @@ export function SegmentBreakdown({ branded, unbranded, weightedScore, brandName 
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Weighted overall — the headline number */}
-        <div className={`rounded-lg border p-4 ${weightedTone.bg}`}>
+        <div className="rounded-lg border border-slate-200 p-4">
           <div className="flex items-baseline justify-between">
             <div>
-              <p className="text-xs uppercase tracking-wide font-medium text-slate-500">
+              <p className="text-xs uppercase tracking-wider font-medium text-slate-500">
                 Weighted AI Visibility Score
               </p>
-              <p className={`text-3xl font-bold mt-1 ${weightedTone.color}`}>
-                {weightedScore}<span className="text-base text-slate-400 ml-1">/100</span>
+              <p className={`text-3xl font-semibold mt-1 tabular-nums tracking-tight ${weightedTone.color}`}>
+                {weightedScore}<span className="text-base text-slate-400 ml-1 font-normal">/100</span>
               </p>
             </div>
-            <Badge variant="outline" className={`${weightedTone.bg} ${weightedTone.color} border`}>
-              {weightedTone.label}
-            </Badge>
+            <DotBadge tone={weightedTone.tone}>{weightedTone.label}</DotBadge>
           </div>
           <p className="text-[11px] text-slate-500 mt-2">
             70% unbranded discovery · 30% branded recall.
@@ -75,13 +71,12 @@ export function SegmentBreakdown({ branded, unbranded, weightedScore, brandName 
         {/* Two segment cards side-by-side */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {/* Unbranded — the harder, more meaningful signal */}
-          <div className={`rounded-lg border p-3 ${unbrandedTone.bg}`}>
+          <div className="rounded-lg border border-slate-200 p-3">
             <div className="flex items-center gap-2 mb-2">
-              <Globe2 className={`h-4 w-4 ${unbrandedTone.color}`} />
-              <p className="text-sm font-semibold text-slate-800">Unbranded discovery</p>
-              <Badge variant="outline" className={`ml-auto ${unbrandedTone.color} text-xs`}>
-                {unbrandedTone.label}
-              </Badge>
+              <p className="text-sm font-semibold text-slate-900">Unbranded discovery</p>
+              <span className="ml-auto">
+                <DotBadge tone={unbrandedTone.tone}>{unbrandedTone.label}</DotBadge>
+              </span>
             </div>
             {unbranded.totalScans === 0 ? (
               <p className="text-xs text-slate-500">
@@ -89,7 +84,7 @@ export function SegmentBreakdown({ branded, unbranded, weightedScore, brandName 
               </p>
             ) : (
               <>
-                <p className={`text-2xl font-bold ${unbrandedTone.color} tabular-nums`}>
+                <p className={`text-2xl font-semibold tabular-nums tracking-tight ${unbrandedTone.color}`}>
                   {unbranded.mentionRate}%
                 </p>
                 <p className="text-xs text-slate-600 mt-1">
@@ -107,13 +102,12 @@ export function SegmentBreakdown({ branded, unbranded, weightedScore, brandName 
           </div>
 
           {/* Branded — the engagement / recall metric */}
-          <div className={`rounded-lg border p-3 ${brandedTone.bg}`}>
+          <div className="rounded-lg border border-slate-200 p-3">
             <div className="flex items-center gap-2 mb-2">
-              <Tag className={`h-4 w-4 ${brandedTone.color}`} />
-              <p className="text-sm font-semibold text-slate-800">Branded recall</p>
-              <Badge variant="outline" className={`ml-auto ${brandedTone.color} text-xs`}>
-                {brandedTone.label}
-              </Badge>
+              <p className="text-sm font-semibold text-slate-900">Branded recall</p>
+              <span className="ml-auto">
+                <DotBadge tone={brandedTone.tone}>{brandedTone.label}</DotBadge>
+              </span>
             </div>
             {branded.totalScans === 0 ? (
               <p className="text-xs text-slate-500">
@@ -121,7 +115,7 @@ export function SegmentBreakdown({ branded, unbranded, weightedScore, brandName 
               </p>
             ) : (
               <>
-                <p className={`text-2xl font-bold ${brandedTone.color} tabular-nums`}>
+                <p className={`text-2xl font-semibold tabular-nums tracking-tight ${brandedTone.color}`}>
                   {branded.mentionRate}%
                 </p>
                 <p className="text-xs text-slate-600 mt-1">
@@ -137,25 +131,24 @@ export function SegmentBreakdown({ branded, unbranded, weightedScore, brandName 
 
         {/* Diagnostic callout when unbranded is 0 but branded > 0 */}
         {unbranded.totalScans > 0 && unbranded.mentionRate === 0 && branded.mentionRate > 0 && (
-          <div className="rounded-lg border border-red-200 bg-red-50/60 p-3 flex items-start gap-3">
-            <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
-            <div className="flex-1 text-xs text-red-900">
-              <p className="font-semibold mb-0.5">
+          <div className="rounded-lg border border-slate-200 p-3">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-red-500 shrink-0" aria-hidden />
+              <p className="text-sm font-semibold text-slate-900">
                 Branded recall {branded.mentionRate}% · Unbranded discovery 0%
               </p>
-              <p className="text-red-800/90">
-                When customers don&apos;t already know &ldquo;{brandName}&rdquo;, AI never recommends you.
-                Fixing this is the single highest-leverage move for AI visibility — see
-                content-briefs &amp; entity-graph recommendations.
-              </p>
             </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              When customers don&apos;t already know &ldquo;{brandName}&rdquo;, AI never recommends you.
+              Fixing this is the single highest-leverage move for AI visibility.
+            </p>
           </div>
         )}
 
         {unbranded.totalScans > 0 && unbranded.mentionRate >= 30 && (
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 flex items-start gap-3">
-            <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
-            <p className="text-xs text-emerald-900">
+          <div className="rounded-lg border border-slate-200 p-3 flex items-center gap-2">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" aria-hidden />
+            <p className="text-xs text-slate-700">
               Real AI discovery working — {brandName} surfaces in {unbranded.mentionRate}% of unbranded queries.
             </p>
           </div>

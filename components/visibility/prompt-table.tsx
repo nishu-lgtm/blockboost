@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { DotBadge } from "@/components/ui/dot-badge";
 import {
   CheckCircle2,
   XCircle,
@@ -19,12 +19,8 @@ import type { PromptRow, PromptResult } from "@/lib/visibility-types";
 
 const ALL_PLATFORMS = ["ChatGPT", "Perplexity", "Gemini", "Copilot", "Grok", "Google AIO"];
 
-const CATEGORY_COLORS: Record<string, string> = {
-  awareness:  "bg-blue-50 text-blue-700 border-blue-200",
-  comparison: "bg-purple-50 text-purple-700 border-purple-200",
-  purchase:   "bg-green-50 text-green-700 border-green-200",
-  custom:     "bg-orange-50 text-orange-700 border-orange-200",
-};
+// Category surfaces as a small uppercase label — color removed for restraint.
+// Category meaning was never load-bearing; the prompt text carries intent.
 
 const SENTIMENT_STYLE: Record<string, string> = {
   POSITIVE: "text-green-600",
@@ -155,15 +151,10 @@ export function PromptTable({ rows }: Props) {
                       }
                     </td>
                     <td className="px-3 py-3 max-w-xs">
-                      <div className="flex items-start gap-2">
-                        <Badge
-                          variant="outline"
-                          className={`text-[10px] px-1.5 py-0 shrink-0 mt-0.5 ${
-                            CATEGORY_COLORS[row.category] ?? CATEGORY_COLORS.custom
-                          }`}
-                        >
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">
                           {row.category}
-                        </Badge>
+                        </span>
                         <span className="text-slate-700 leading-snug line-clamp-2">
                           {row.promptText}
                         </span>
@@ -228,18 +219,14 @@ export function PromptTable({ rows }: Props) {
                                 <div className="flex items-center gap-2">
                                   <span className="text-xs font-semibold text-slate-700">{pl}</span>
                                   {result.mentioned ? (
-                                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-[10px] px-1.5 py-0">
-                                      Mentioned
-                                    </Badge>
+                                    <DotBadge tone="strong">Mentioned</DotBadge>
                                   ) : (
-                                    <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200 text-[10px] px-1.5 py-0">
-                                      Not Mentioned
-                                    </Badge>
+                                    <DotBadge tone="critical">Not mentioned</DotBadge>
                                   )}
                                   {result.mentioned && result.mentionRank && (
-                                    <Badge variant="outline" className="bg-slate-50 text-slate-600 border-slate-200 text-[10px] px-1.5 py-0">
+                                    <span className="text-[11px] text-slate-500 tabular-nums">
                                       #{result.mentionRank} mention
-                                    </Badge>
+                                    </span>
                                   )}
                                   <span
                                     className={`text-[10px] font-medium ml-auto ${

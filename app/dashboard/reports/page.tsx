@@ -4,16 +4,14 @@ import { useState, useEffect, useCallback } from "react";
 import {
   FileText,
   Download,
-  Share2,
   Eye,
   Loader2,
-  Plus,
   ExternalLink,
   BarChart3,
   Copy,
   CheckCircle,
 } from "lucide-react";
-import { GenerateReportModal } from "@/components/dashboard/generate-report-modal";
+import { ReportGeneratorInline } from "@/components/dashboard/report-generator-inline";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
@@ -47,7 +45,6 @@ export default function ReportsPage() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [reports, setReports] = useState<ReportRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [modalOpen, setModalOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Fetch projects
@@ -96,21 +93,20 @@ export default function ReportsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Reports</h1>
+          <h1 className="text-2xl font-semibold text-slate-900">Reports</h1>
           <p className="text-slate-500 text-sm mt-1">
             Generate and share AI visibility reports for your projects
           </p>
         </div>
-        <button
-          onClick={() => setModalOpen(true)}
-          disabled={!selectedProject}
-          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold px-4 py-2.5 rounded-xl transition-colors text-sm"
-        >
-          <Plus className="w-4 h-4" />
-          Generate Report
-        </button>
+        {selectedProject && (
+          <ReportGeneratorInline
+            projectId={selectedProject.id}
+            brandName={selectedProject.brandName}
+            onGenerated={fetchReports}
+          />
+        )}
       </div>
 
       {/* Project selector */}
@@ -120,10 +116,10 @@ export default function ReportsPage() {
             <button
               key={p.id}
               onClick={() => setSelectedProject(p)}
-              className={`text-sm font-semibold px-4 py-2 rounded-xl border transition-all ${
+              className={`text-sm font-medium px-3 py-1.5 rounded-lg border transition-colors ${
                 selectedProject?.id === p.id
-                  ? "bg-indigo-600 text-white border-indigo-600"
-                  : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                  ? "bg-slate-900 text-white border-slate-900"
+                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
               }`}
             >
               {p.brandName}
@@ -138,7 +134,7 @@ export default function ReportsPage() {
           <Loader2 className="w-6 h-6 text-indigo-500 animate-spin" />
         </div>
       ) : reports.length === 0 ? (
-        <EmptyState onGenerate={() => setModalOpen(true)} />
+        <EmptyState />
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
@@ -153,8 +149,8 @@ export default function ReportsPage() {
                 className="px-6 py-4 flex items-center justify-between gap-4 hover:bg-slate-50 transition-colors"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 bg-indigo-50 rounded-xl flex items-center justify-center shrink-0">
-                    <FileText className="w-4 h-4 text-indigo-600" />
+                  <div className="w-9 h-9 bg-slate-50 rounded-xl flex items-center justify-center shrink-0">
+                    <FileText className="w-4 h-4 text-slate-500" />
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-900 truncate">
@@ -211,7 +207,7 @@ export default function ReportsPage() {
                       href={r.pdfUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors px-3 py-1.5 rounded-lg"
+                      className="flex items-center gap-1.5 text-xs font-medium text-slate-700 border border-slate-200 hover:bg-slate-50 transition-colors px-3 py-1.5 rounded-lg"
                       title="Download PDF"
                     >
                       <Download className="w-3.5 h-3.5" />
@@ -227,18 +223,6 @@ export default function ReportsPage() {
         </div>
       )}
 
-      {/* Generate modal */}
-      {selectedProject && (
-        <GenerateReportModal
-          projectId={selectedProject.id}
-          brandName={selectedProject.brandName}
-          open={modalOpen}
-          onClose={() => {
-            setModalOpen(false);
-            fetchReports();
-          }}
-        />
-      )}
     </div>
   );
 }
@@ -247,24 +231,17 @@ export default function ReportsPage() {
 // Empty state
 // ---------------------------------------------------------------------------
 
-function EmptyState({ onGenerate }: { onGenerate: () => void }) {
+function EmptyState() {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 py-16 flex flex-col items-center text-center px-6">
-      <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center mb-4">
-        <BarChart3 className="w-7 h-7 text-indigo-600" />
+      <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center mb-4">
+        <BarChart3 className="w-6 h-6 text-slate-400" />
       </div>
-      <h3 className="text-lg font-bold text-slate-900 mb-2">No reports yet</h3>
-      <p className="text-slate-500 text-sm max-w-xs mb-6">
-        Generate your first AI visibility report. It takes about 30 seconds and creates a
-        beautiful PDF you can share with your team.
+      <h3 className="text-lg font-semibold text-slate-900 mb-2">No reports yet</h3>
+      <p className="text-slate-500 text-sm max-w-xs">
+        Pick a period above and click Generate. Each report takes ~30 seconds and produces a
+        shareable PDF.
       </p>
-      <button
-        onClick={onGenerate}
-        className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-5 py-2.5 rounded-xl transition-colors text-sm"
-      >
-        <Plus className="w-4 h-4" />
-        Generate your first report
-      </button>
     </div>
   );
 }
