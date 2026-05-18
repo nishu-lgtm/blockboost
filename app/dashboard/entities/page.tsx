@@ -20,7 +20,7 @@ export default async function EntitiesPage() {
         title="Brand Knowledge"
         description="Extract and view brand entities — products, people, features, and their relationships"
       />
-      <main className="flex-1 p-6">
+      <main className="flex-1 p-4 md:p-6">
         {!project ? (
           <div className="text-center py-20 text-slate-500">
             <p>No project found. Create a project to get started.</p>

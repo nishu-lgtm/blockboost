@@ -164,7 +164,7 @@ export default function ContentBriefsPage() {
         description="AI-generated content briefs to close your AEO visibility gaps"
       />
 
-      <main className="flex-1 p-6 space-y-5">
+      <main className="flex-1 p-4 md:p-6 space-y-5">
         {/* Header row: project selector + tab switcher */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
           {/* Project selector */}

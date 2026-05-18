@@ -115,7 +115,7 @@ export default async function SettingsPage({
     return (
       <div className="flex flex-col flex-1">
         <Topbar title="Settings" description="Manage your account and preferences" />
-        <main className="flex-1 p-6 max-w-2xl w-full mx-auto">
+        <main className="flex-1 p-4 md:p-6 max-w-2xl w-full mx-auto">
           <div className="rounded-2xl border border-slate-200 bg-white divide-y divide-slate-100">
             {SECTIONS.map((s) => (
               <Link
@@ -145,7 +145,7 @@ export default async function SettingsPage({
   return (
     <div className="flex flex-col flex-1">
       <Topbar title="Settings" description="Manage your account and preferences" />
-      <main className="flex-1 p-6 max-w-3xl w-full mx-auto">
+      <main className="flex-1 p-4 md:p-6 max-w-3xl w-full mx-auto">
         <Link
           href="/dashboard/settings"
           className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 mb-4 transition-colors"

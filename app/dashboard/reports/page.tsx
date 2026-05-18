@@ -137,7 +137,7 @@ export default function ReportsPage() {
         <EmptyState />
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+          <div className="px-4 md:px-6 py-4 border-b border-slate-100 flex items-center justify-between">
             <p className="text-sm font-semibold text-slate-700">
               {reports.length} report{reports.length !== 1 ? "s" : ""} generated
             </p>
@@ -146,9 +146,9 @@ export default function ReportsPage() {
             {reports.map((r) => (
               <div
                 key={r.id}
-                className="px-6 py-4 flex items-center justify-between gap-4 hover:bg-slate-50 transition-colors"
+                className="px-4 md:px-6 py-4 flex flex-wrap items-center justify-between gap-3 hover:bg-slate-50 transition-colors"
               >
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-3 min-w-0 flex-1 basis-full sm:basis-auto">
                   <div className="w-9 h-9 bg-slate-50 rounded-xl flex items-center justify-center shrink-0">
                     <FileText className="w-4 h-4 text-slate-500" />
                   </div>

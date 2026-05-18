@@ -126,7 +126,7 @@ export default function CompetitorsPage() {
   return (
     <div className="flex flex-col flex-1">
       {/* ── Header ────────────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-10 bg-white border-b border-slate-200 px-6 py-4">
+      <div className="sticky top-0 z-10 bg-white border-b border-slate-200 px-4 md:px-6 py-4">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center">
@@ -154,7 +154,7 @@ export default function CompetitorsPage() {
       </div>
 
       {/* ── Content ─────────────────────────────────────────────────────── */}
-      <main className="flex-1 p-6 space-y-6 max-w-7xl w-full mx-auto">
+      <main className="flex-1 p-4 md:p-6 space-y-6 max-w-7xl w-full mx-auto">
 
         {/* No competitors callout */}
         {!loading && data && competitors.length === 0 && (

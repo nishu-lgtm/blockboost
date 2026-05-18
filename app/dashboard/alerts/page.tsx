@@ -244,7 +244,7 @@ export default function AlertsPage() {
         description="Alerts and visibility events for your projects"
       />
 
-      <main className="flex-1 p-6 max-w-4xl w-full mx-auto">
+      <main className="flex-1 p-4 md:p-6 max-w-4xl w-full mx-auto">
         {/* Header row */}
         <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
           <div className="flex items-center gap-3">

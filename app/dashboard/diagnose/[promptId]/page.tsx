@@ -81,7 +81,7 @@ export default async function DiagnosePromptPage({
   return (
     <div className="flex flex-col flex-1">
       <Topbar title="Diagnose prompt" description="Why am I winning or losing on this query?" />
-      <main className="flex-1 p-6 space-y-6 max-w-4xl">
+      <main className="flex-1 p-4 md:p-6 space-y-6 max-w-4xl">
         <Link
           href="/dashboard/ai-visibility"
           className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700"

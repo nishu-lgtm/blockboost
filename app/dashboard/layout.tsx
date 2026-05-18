@@ -40,9 +40,9 @@ export default async function DashboardLayout({
   return (
     <div className="flex h-screen bg-slate-50">
       <Sidebar />
-      <div className="flex-1 ml-64 flex flex-col min-h-screen overflow-auto">
+      <div className="flex-1 md:ml-64 flex flex-col min-h-screen overflow-auto">
         <EmailVerificationBanner emailVerified={!!user?.emailVerified} />
-        <div className="px-6 pt-4">
+        <div className="px-4 md:px-6 pt-4">
           <ScanStatusBanner projectId={firstProject.id} />
         </div>
         {children}

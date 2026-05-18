@@ -87,7 +87,7 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-col flex-1">
       <Topbar title="Overview" description="Your AI visibility dashboard" />
-      <main className="flex-1 p-6">
+      <main className="flex-1 p-4 md:p-6">
         {hasProjects ? (
           <DashboardWithData
             projectId={project!.id}
