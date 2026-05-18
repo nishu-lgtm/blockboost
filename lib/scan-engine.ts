@@ -64,6 +64,13 @@ export function platformsForPlan(plan: string): Platform[] {
     platforms.push(Platform.PERPLEXITY);
   }
 
+  // Gemini via Google AI Studio API (lib/gemini-api.ts) — same rationale.
+  // Free tier on gemini-2.5-flash-lite is enough for most users; cost is
+  // ≈ $0.002 per 10-prompt scan after free tier.
+  if (process.env.GEMINI_API_KEY) {
+    platforms.push(Platform.GEMINI);
+  }
+
   // Plan tiers reserved for future capacity controls (e.g., per-platform
   // run counts, additional platforms when GAIO/Gemini scrapers land).
   switch (plan) {
@@ -111,8 +118,22 @@ export async function runScraper(
     case Platform.GOOGLE_AI_OVERVIEWS:
       results = await runGoogleAIOverviewsScraper(prompts);
       break;
-    // GEMINI, COPILOT, GROK: actor integrations can be added here as they
-    // become available on Apify.  Return empty for now so they don't block.
+    case Platform.GEMINI: {
+      // Google AI Studio API (lib/gemini-api.ts) — see comments there
+      // for why we use the official API instead of an Apify Gemini scraper.
+      const { runGeminiApi, isGeminiApiAvailable } = await import(
+        "@/lib/gemini-api"
+      );
+      if (!isGeminiApiAvailable()) {
+        console.warn("[scan-engine] GEMINI_API_KEY missing — Gemini skipped");
+        results = [];
+      } else {
+        results = await runGeminiApi(prompts);
+      }
+      break;
+    }
+    // COPILOT, GROK: no working integration yet. Return empty so they
+    // don't block. Add API/scraper paths as they become available.
     default:
       console.warn(`[scan-engine] No scraper implemented for platform ${platform}`);
       results = [];
