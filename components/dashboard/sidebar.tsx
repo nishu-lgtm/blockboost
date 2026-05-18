@@ -67,12 +67,19 @@ const navItems = [
     icon: Wrench,
   },
   {
-    label: "Entity Graph",
+    // Renamed 2026-05-16 from "Entity Graph" — too jargony. "Brand
+    // Knowledge" tells marketers what's there without leaking the
+    // underlying graph data structure. Route /dashboard/entities
+    // intentionally unchanged so existing bookmarks keep working.
+    label: "Brand Knowledge",
     href: "/dashboard/entities",
     icon: Network,
   },
   {
-    label: "AI Delivery",
+    // Renamed from "AI Delivery". "AI Brand Files" makes it clear
+    // these are deliverables (llm.md, facts.json, entities.json) the
+    // user can hand to AI systems — not a generic delivery feature.
+    label: "AI Brand Files",
     href: "/dashboard/ai-delivery",
     icon: Package,
   },

@@ -23,6 +23,8 @@ import { DriftCard } from "@/components/dashboard/drift-card";
 import type { RetrievalAction } from "@/lib/retrieval-planner";
 import { bucketVisibilityScore } from "@/lib/score-bucket";
 import { computeVisibilitySegments } from "@/lib/visibility-segments";
+import { computeScoreBreakdown, type ScoreBreakdown } from "@/lib/score-breakdown";
+import { ScoreBreakdownCard } from "@/components/dashboard/score-breakdown-card";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -62,6 +64,11 @@ export default async function DashboardPage() {
     ? await computeNextActions(project.id).catch(() => null)
     : null;
 
+  // 2026-05-16 Tier 2: drivers behind the headline score
+  const scoreBreakdown = project
+    ? await computeScoreBreakdown(project.id).catch(() => null)
+    : null;
+
   return (
     <div className="flex flex-col flex-1">
       <Topbar title="Overview" description="Your AI visibility dashboard" />
@@ -77,6 +84,7 @@ export default async function DashboardPage() {
             plannerActions={plannerResult?.actions ?? []}
             plannerRetrievabilityScore={plannerResult?.retrievabilityScore ?? 0}
             plannerEntityCount={plannerResult?.entityCount ?? 0}
+            scoreBreakdown={scoreBreakdown}
           />
         ) : (
           <EmptyState userName={session?.user?.name ?? undefined} />
@@ -175,6 +183,7 @@ function DashboardWithData({
   plannerActions,
   plannerRetrievabilityScore,
   plannerEntityCount,
+  scoreBreakdown,
 }: {
   projectId: string;
   visibilityScore: number;
@@ -185,6 +194,7 @@ function DashboardWithData({
   plannerActions: RetrievalAction[];
   plannerRetrievabilityScore: number;
   plannerEntityCount: number;
+  scoreBreakdown: ScoreBreakdown | null;
 }) {
   // Bucket the weighted score (visibilityScore is now segments.weightedScore,
   // not raw mention rate — see app/dashboard/page.tsx default export).
@@ -260,6 +270,9 @@ function DashboardWithData({
           entityCount={plannerEntityCount}
         />
       )}
+
+      {/* Score breakdown — why the headline number is what it is */}
+      {scoreBreakdown && <ScoreBreakdownCard breakdown={scoreBreakdown} />}
 
       {/* Weekly drift */}
       <DriftCard projectId={projectId} />

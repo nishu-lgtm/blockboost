@@ -9,13 +9,17 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { computeDecay, decayAlertMessage } from "./decay";
 
-// Helper: build a Mention at N days ago with confidence default 'high'
+const FIXED_NOW = new Date("2026-05-15T12:00:00Z");
+
+// Helper: build a Mention at N days ago RELATIVE to FIXED_NOW (not real time).
+// Previously used Date.now() which made the test flaky once real time drifted
+// past FIXED_NOW + windowDays (caught on 2026-05-16 — "mentions outside both
+// windows" assertion went actual=0 expected=10 because day-2 mentions
+// computed from real-now slipped just past the FIXED_NOW upper bound).
 function m(daysAgo: number, brandMentioned: boolean, confidence: "high" | "medium" | "low" | null = "high") {
-  const t = Date.now() - daysAgo * 24 * 60 * 60 * 1000;
+  const t = FIXED_NOW.getTime() - daysAgo * 24 * 60 * 60 * 1000;
   return { createdAt: new Date(t), brandMentioned, confidence };
 }
-
-const FIXED_NOW = new Date("2026-05-15T12:00:00Z");
 
 test("classic 15pp drop on adequate samples → verdict=decay", () => {
   // INTENT: this is the headline use case. Customer was at 50%, dropped

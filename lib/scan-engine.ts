@@ -38,8 +38,13 @@ export interface ScanSummary {
 export function platformsForPlan(plan: string): Platform[] {
   switch (plan) {
     case "FREE":
-      // Free tier: one platform only
-      return [Platform.CHATGPT];
+      // Free tier scans ChatGPT + Perplexity. Reduced from STARTER's
+      // 3-platform set by dropping Google AI Overviews (most expensive
+      // Apify actor), but the two added together are still the most
+      // requested coverage from new users. Gemini intentionally excluded
+      // — no public scraper yet, and silent empty results would erode
+      // trust the same way "100% mention rate" did before the parser fix.
+      return [Platform.CHATGPT, Platform.PERPLEXITY];
     case "STARTER":
       // Starter: 3 platforms
       return [Platform.CHATGPT, Platform.PERPLEXITY, Platform.GOOGLE_AI_OVERVIEWS];
