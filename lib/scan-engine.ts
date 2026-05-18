@@ -36,30 +36,34 @@ export interface ScanSummary {
  * user plan.
  */
 export function platformsForPlan(plan: string): Platform[] {
+  // ─────────────────────────────────────────────────────────────────────
+  // PERPLEXITY DISABLED 2026-05-18 (rolled back from 2026-05-16 inclusion).
+  //
+  // The `zhorex/perplexity-ai-scraper` Apify actor is unreliable:
+  //   • Times out (60-90s) on a single query → multiplies by N prompts ×
+  //     3 retries = blocks the Vercel function past its 300s maxDuration.
+  //     ChatGPT results never get written because Promise.all is waiting
+  //     on Perplexity.
+  //   • Even when it doesn't time out it scrapes UI chrome — the answer
+  //     field contains "Cookie Policy / Thinking / Sign In" placeholder
+  //     text rather than Perplexity's real response. Parser finds 0
+  //     mentions in garbage, falsely reporting 0% Perplexity visibility.
+  //
+  // GOOGLE_AI_OVERVIEWS DISABLED 2026-05-18 (same risk class — unverified
+  // scraper, similar timeout/garbage failure modes likely).
+  //
+  // Both will return when a verified scraper exists. Tracking issue:
+  // OPS.md "Multi-platform scrapers". Until then, ChatGPT is the only
+  // platform that produces trustworthy data.
+  // ─────────────────────────────────────────────────────────────────────
   switch (plan) {
     case "FREE":
-      // Free tier scans ChatGPT + Perplexity. Reduced from STARTER's
-      // 3-platform set by dropping Google AI Overviews (most expensive
-      // Apify actor), but the two added together are still the most
-      // requested coverage from new users. Gemini intentionally excluded
-      // — no public scraper yet, and silent empty results would erode
-      // trust the same way "100% mention rate" did before the parser fix.
-      return [Platform.CHATGPT, Platform.PERPLEXITY];
     case "STARTER":
-      // Starter: 3 platforms
-      return [Platform.CHATGPT, Platform.PERPLEXITY, Platform.GOOGLE_AI_OVERVIEWS];
     case "GROWTH":
     case "AGENCY":
     case "ENTERPRISE":
     default:
-      // Currently 3 supported platforms. GEMINI/COPILOT/GROK lack scrapers
-      // and would just return empty data, so we exclude them from automatic
-      // scans rather than burn API calls and show "0% mention rate" tiles.
-      return [
-        Platform.CHATGPT,
-        Platform.PERPLEXITY,
-        Platform.GOOGLE_AI_OVERVIEWS,
-      ];
+      return [Platform.CHATGPT];
   }
 }
 
@@ -142,8 +146,16 @@ export async function runScan(
   // ── 2. Run scrapers N× per platform for consensus ───────────────────────
   // N = consensus runs per plan (see lib/consensus.ts). FREE/STARTER → 1,
   // GROWTH+ → 3. Apify cost scales linearly with N.
+  //
+  // ALL-SETTLED so one broken platform (e.g. Perplexity actor returning
+  // UI chrome instead of answers, or a hung scraper) doesn't discard
+  // working platforms' results. The 2026-05-18 Perplexity outage proved
+  // why: ChatGPT scrapes succeeded in 8s but their data was abandoned
+  // because Promise.all waited 5+ minutes on a doomed Perplexity retry
+  // loop, getting killed by Vercel's function timeout. Each platform's
+  // results are now independent — if one fails, the others still write.
   const N = consensusRunsForPlan(plan);
-  const platformRuns = await Promise.all(
+  const platformRunResults = await Promise.allSettled(
     enabledPlatforms.map(async (platform) => {
       const runs = await Promise.all(
         Array.from({ length: N }, () => runScraper(platform, promptTexts))
@@ -151,6 +163,16 @@ export async function runScan(
       return { platform, runs };
     })
   );
+  const platformRuns = platformRunResults
+    .map((r, i) => {
+      if (r.status === "fulfilled") return r.value;
+      console.error(
+        `[scan-engine] platform ${enabledPlatforms[i]} failed:`,
+        r.reason
+      );
+      return null;
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
 
   // ── 3. Analyse + aggregate runs, then persist to DB ─────────────────────
   let totalMentions = 0;
