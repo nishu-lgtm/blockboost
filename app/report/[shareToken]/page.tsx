@@ -128,14 +128,26 @@ export default async function SharedReportPage({
         {/* Key metrics */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <MetricCard
+            // Match the dashboard's headline number. Was "Mention Rate
+            // 46%" — raw average — which contradicted the dashboard's
+            // "20/100 Low" weighted score for the same brand. Marketers
+            // doing a sanity-check between surfaces saw two different
+            // numbers describing the same thing. Now both surfaces lead
+            // with the weighted AI Visibility score.
+            label="AI Visibility"
+            value={`${es.weightedScore}/100`}
+            sub={`${es.unbrandedMentionRate}% unbranded · ${es.brandedMentionRate}% branded`}
+          />
+          <MetricCard
             label="Mention Rate"
             value={`${es.overallMentionRate}%`}
-            change={es.mentionRateChange}
+            change={es.hasPriorPeriod ? es.mentionRateChange : undefined}
+            sub="raw across all scans"
           />
           <MetricCard
             label="Share of Voice"
             value={`${es.shareOfVoice}%`}
-            change={es.shareOfVoiceChange}
+            change={es.hasPriorPeriod ? es.shareOfVoiceChange : undefined}
           />
           <MetricCard
             label="Citations Found"
@@ -177,13 +189,18 @@ export default async function SharedReportPage({
                   <span className="w-12 text-sm font-bold text-indigo-600 text-right shrink-0">
                     {p.mentionRate}%
                   </span>
-                  <span
-                    className={`w-14 text-xs font-semibold text-right shrink-0 ${
-                      diff > 0 ? "text-green-600" : diff < 0 ? "text-red-600" : "text-slate-400"
-                    }`}
-                  >
-                    {diff === 0 ? "—" : diff > 0 ? `+${diff}pp` : `${diff}pp`}
-                  </span>
+                  {/* Hide per-platform delta on first reports (no prior to compare). */}
+                  {es.hasPriorPeriod ? (
+                    <span
+                      className={`w-14 text-xs font-semibold text-right shrink-0 ${
+                        diff > 0 ? "text-green-600" : diff < 0 ? "text-red-600" : "text-slate-400"
+                      }`}
+                    >
+                      {diff === 0 ? "—" : diff > 0 ? `+${diff}pp` : `${diff}pp`}
+                    </span>
+                  ) : (
+                    <span className="w-14" />
+                  )}
                 </div>
               );
             })}

@@ -373,11 +373,12 @@ export default function CompetitorsPage() {
             <div className="flex items-center gap-2">
               <Globe className="h-4 w-4 text-blue-500" />
               <CardTitle className="text-base font-semibold text-slate-800">
-                Citation Sources Comparison
+                Sources AI Cites Alongside Each Brand
               </CardTitle>
             </div>
             <p className="text-xs text-slate-500">
-              Domains AI platforms use when citing each brand — gaps are link-building opportunities
+              External domains AI included in responses about each brand. Not your own URLs —
+              these are third-party sites you could pursue coverage from to influence what AI says.
             </p>
           </CardHeader>
           <CardContent>

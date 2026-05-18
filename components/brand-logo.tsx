@@ -41,8 +41,8 @@ export function BrandLogo({
     <div className={cn("flex items-center gap-1.5", className)}>
       <Zap className={cn(s.icon, accent)} />
       <span className={cn(s.text, "font-bold")}>
-        <span className={blockColor}>Visibility</span>
-        <span className={accent}>IQ</span>
+        <span className={blockColor}>Block</span>
+        <span className={accent}>Boost</span>
       </span>
     </div>
   );

@@ -25,6 +25,7 @@ import { bucketVisibilityScore } from "@/lib/score-bucket";
 import { computeVisibilitySegments } from "@/lib/visibility-segments";
 import { computeScoreBreakdown, type ScoreBreakdown } from "@/lib/score-breakdown";
 import { ScoreBreakdownCard } from "@/components/dashboard/score-breakdown-card";
+import { platformsForPlan } from "@/lib/scan-engine";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -41,6 +42,10 @@ export default async function DashboardPage() {
       },
       competitors: { select: { id: true } },
       _count: { select: { mentions: true } },
+      // Need plan to compute AI Models Tracked from platformsForPlan
+      // (was hardcoded "3" before — drifted from reality after Perplexity
+      // gating on PERPLEXITY_API_KEY + Gemini gating on GEMINI_API_KEY).
+      user: { select: { plan: true } },
     },
   });
 
@@ -58,6 +63,14 @@ export default async function DashboardPage() {
   const visibilityScore = segments?.weightedScore ?? 0;
   const unbrandedRate = segments?.unbranded.mentionRate ?? null;
   const competitorCount = project?.competitors.length ?? 0;
+
+  // Derive AI Models Tracked from the current plan + env-gated platforms.
+  // Was hardcoded "3" — drifted from reality after Perplexity and Gemini
+  // started gating on their API keys (so a project could actually be
+  // scanning just ChatGPT, or ChatGPT+Gemini, never 3 fixed).
+  const aiModelsTracked = project
+    ? platformsForPlan(project.user.plan).length
+    : 0;
 
   // Sprint 9: next-best actions
   const plannerResult = project
@@ -80,6 +93,7 @@ export default async function DashboardPage() {
             unbrandedRate={unbrandedRate}
             totalMentions={totalMentions}
             competitorCount={competitorCount}
+            aiModelsTracked={aiModelsTracked}
             recentMentions={project!.mentions}
             plannerActions={plannerResult?.actions ?? []}
             plannerRetrievabilityScore={plannerResult?.retrievabilityScore ?? 0}
@@ -179,6 +193,7 @@ function DashboardWithData({
   unbrandedRate,
   totalMentions,
   competitorCount,
+  aiModelsTracked,
   recentMentions,
   plannerActions,
   plannerRetrievabilityScore,
@@ -190,6 +205,7 @@ function DashboardWithData({
   unbrandedRate: number | null;
   totalMentions: number;
   competitorCount: number;
+  aiModelsTracked: number;
   recentMentions: Mention[];
   plannerActions: RetrievalAction[];
   plannerRetrievabilityScore: number;
@@ -241,7 +257,7 @@ function DashboardWithData({
     },
     {
       label: "AI Models Tracked",
-      value: "3",
+      value: String(aiModelsTracked),
       subValue: null,
       description: null,
       icon: Brain,

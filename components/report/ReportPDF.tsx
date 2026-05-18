@@ -463,14 +463,18 @@ function CoverPage({ data }: { data: ReportData }) {
             <Text style={S.coverMetricLabel}>Mention Rate</Text>
             <Text style={S.coverMetricValue}>{es.overallMentionRate}%</Text>
             <Text style={S.coverMetricSub}>
-              {es.mentionRateChange >= 0 ? "↑" : "↓"} {Math.abs(es.mentionRateChange)}pp vs prior
+              {es.hasPriorPeriod
+                ? `${es.mentionRateChange >= 0 ? "↑" : "↓"} ${Math.abs(es.mentionRateChange)}pp vs prior`
+                : "Baseline"}
             </Text>
           </View>
           <View style={S.coverMetricCard}>
             <Text style={S.coverMetricLabel}>Share of Voice</Text>
             <Text style={S.coverMetricValue}>{es.shareOfVoice}%</Text>
             <Text style={S.coverMetricSub}>
-              {es.shareOfVoiceChange >= 0 ? "↑" : "↓"} {Math.abs(es.shareOfVoiceChange)}pp vs prior
+              {es.hasPriorPeriod
+                ? `${es.shareOfVoiceChange >= 0 ? "↑" : "↓"} ${Math.abs(es.shareOfVoiceChange)}pp vs prior`
+                : "Baseline"}
             </Text>
           </View>
           <View style={S.coverMetricCard}>
@@ -883,12 +887,16 @@ function CitationPage({ data }: { data: ReportData }) {
           <View style={S.metricCard}>
             <Text style={S.metricCardLabel}>New Citations</Text>
             <Text style={S.metricCardValue}>{ca.newCitationsThisPeriod}</Text>
-            <Text style={S.metricCardSub}>vs prior period</Text>
+            <Text style={S.metricCardSub}>
+              {data.executiveSummary.hasPriorPeriod ? "vs prior period" : "in this period"}
+            </Text>
           </View>
           <View style={S.metricCard}>
             <Text style={S.metricCardLabel}>Lost Citations</Text>
             <Text style={S.metricCardValue}>{ca.lostCitationsThisPeriod}</Text>
-            <Text style={S.metricCardSub}>vs prior period</Text>
+            <Text style={S.metricCardSub}>
+              {data.executiveSummary.hasPriorPeriod ? "vs prior period" : "(needs prior period)"}
+            </Text>
           </View>
           <View style={S.metricCard}>
             <Text style={S.metricCardLabel}>Owned Citation Rate</Text>

@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { Platform, Sentiment } from "@prisma/client";
 import OpenAI from "openai";
 import { format, differenceInDays } from "date-fns";
+import { computeVisibilitySegments } from "@/lib/visibility-segments";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -60,6 +61,29 @@ export interface ReportData {
   executiveSummary: {
     overallMentionRate: number;
     mentionRateChange: number;
+    /**
+     * True only when there were ≥5 mentions in the prior period — i.e. the
+     * delta values (mentionRateChange, shareOfVoiceChange, per-platform
+     * changes) are anchored to real prior data. When false, callers should
+     * HIDE all the "+Xpp vs prior" surfaces because they're comparing
+     * against zero and look like miraculous growth on first-ever reports.
+     * Added 2026-05-18 after user spotted the misleading "+46pp vs prior"
+     * on their first PlutoxAI report.
+     */
+    hasPriorPeriod: boolean;
+    /**
+     * Weighted AI Visibility score (0-100) — matches the dashboard's
+     * headline number. 70% unbranded discovery + 30% branded recall.
+     * Anchored on the harder unbranded number which is what "AI
+     * Visibility" actually measures. Added 2026-05-18 because reports
+     * showed 46% raw rate while the dashboard showed 20/100 weighted —
+     * marketers got whiplash from the mismatch.
+     */
+    weightedScore: number;
+    /** Unbranded mention rate — 0-100. The diagnostic number under the headline. */
+    unbrandedMentionRate: number;
+    /** Branded mention rate — 0-100. Engagement, not discovery. */
+    brandedMentionRate: number;
     totalPromptsTracked: number;
     platformsTracked: string[];
     topPlatform: string;
@@ -136,23 +160,34 @@ async function generateNarrative(
   worstPlatform: string,
   worstRate: number,
   shareOfVoice: number,
+  hasPriorPeriod: boolean,
 ): Promise<string> {
   const openai = getOpenAI();
+  // Frame the period comparison only when we actually have a real prior
+  // period to compare against. Otherwise the narrative would say "+46pp
+  // versus the prior period" on a first-ever report (where there was no
+  // prior period) — which is the bug the user spotted on 2026-05-18.
+  const changeText = hasPriorPeriod
+    ? (change >= 0
+        ? `up ${Math.abs(change)} percentage points from the previous period`
+        : `down ${Math.abs(change)} percentage points from the previous period`)
+    : "this is the first report — a new baseline";
   if (!openai) {
-    const dir = change >= 0 ? "up" : "down";
-    const abs = Math.abs(change);
-    return `In ${period}, ${brandName} appeared in ${overallRate}% of tracked AI queries, ${dir} ${abs} percentage points from the previous period. ${topPlatform} remains the strongest channel at ${topRate}%, while ${worstPlatform} at ${worstRate}% presents the biggest opportunity for improvement. With a share of voice of ${shareOfVoice}% against tracked competitors, there is clear room to grow AI visibility through targeted content and schema improvements.`;
+    return `In ${period}, ${brandName} appeared in ${overallRate}% of tracked AI queries, ${changeText}. ${topPlatform} remains the strongest channel at ${topRate}%, while ${worstPlatform} at ${worstRate}% presents the biggest opportunity for improvement. With a share of voice of ${shareOfVoice}% against tracked competitors, there is clear room to grow AI visibility through targeted content and schema improvements.`;
   }
   try {
+    const periodLine = hasPriorPeriod
+      ? `Overall mention rate: ${overallRate}% (${change >= 0 ? "+" : ""}${change}pp vs last period)`
+      : `Overall mention rate: ${overallRate}% (first report — no prior period to compare against; DO NOT invent a comparison)`;
     const prompt = `Write a 3-sentence executive narrative for an AI visibility report.
 Brand: ${brandName}
 Period: ${period}
-Overall mention rate: ${overallRate}% (${change >= 0 ? "+" : ""}${change}pp vs last period)
+${periodLine}
 Best platform: ${topPlatform} at ${topRate}%
 Worst platform: ${worstPlatform} at ${worstRate}%
 Share of voice vs competitors: ${shareOfVoice}%
 
-Be specific, professional, and concise. Start with "In ${period}," and mention specific numbers.`;
+Be specific, professional, and concise. Start with "In ${period}," and mention specific numbers. ${hasPriorPeriod ? "" : "Do NOT use phrases like 'increase' or 'change versus prior period' — this is a baseline."}`;
     const res = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
@@ -161,7 +196,10 @@ Be specific, professional, and concise. Start with "In ${period}," and mention s
     });
     return res.choices[0]?.message?.content?.trim() ?? "";
   } catch {
-    return `In ${period}, ${brandName} achieved a ${overallRate}% overall mention rate across tracked AI platforms, representing a ${change >= 0 ? "+" : ""}${change}pp change versus the prior period.`;
+    const tail = hasPriorPeriod
+      ? `representing a ${change >= 0 ? "+" : ""}${change}pp change versus the prior period.`
+      : `establishing a new baseline (no prior period to compare yet).`;
+    return `In ${period}, ${brandName} achieved a ${overallRate}% overall mention rate across tracked AI platforms, ${tail}`;
   }
 }
 
@@ -315,11 +353,22 @@ export async function compileReportData(
     currentMentions.filter(m => m.brandMentioned).length,
     currentMentions.length,
   );
+  // Segment-aware weighted score (matches the dashboard's headline). Pulls
+  // ALL mentions for the project — not period-scoped — because the segment
+  // calc reasons over which prompts are branded vs unbranded, a project-
+  // level taxonomy. The mentionRate inside each segment is the lifetime
+  // rate, not period-scoped; for reports we accept that as a known limit
+  // documented in the segment lib until a period-scoped flavor lands.
+  const segments = await computeVisibilitySegments(projectId);
   const prevOverallRate = safeDivPct(
     prevMentions.filter(m => m.brandMentioned).length,
     prevMentions.length,
   );
-  const mentionRateChange = overallMentionRate - prevOverallRate;
+  // "Has prior period" gate — only show deltas when the prior window had
+  // enough data to compare against. 5 mention rows is the same floor decay
+  // detection uses for the same reason: smaller samples produce wild swings.
+  const hasPriorPeriod = prevMentions.length >= 5;
+  const mentionRateChange = hasPriorPeriod ? overallMentionRate - prevOverallRate : 0;
 
   // ── 4. Per-platform breakdown ─────────────────────────────────────────────
   const platformMap = new Map<Platform, {
@@ -467,7 +516,11 @@ export async function compileReportData(
   const prevBrandCount = prevMentions.filter(m => m.brandMentioned).length;
   const prevAllCompCount = [...compPrevMap.values()].reduce((s, v) => s + v, 0);
   const prevShareOfVoice = safeDivPct(prevBrandCount, prevBrandCount + prevAllCompCount);
-  const shareOfVoiceChange = shareOfVoice - prevShareOfVoice;
+  // Same hasPriorPeriod gate — see mentionRateChange comment above. When the
+  // prior window has <5 mentions, the delta is meaningless and looks like
+  // explosive growth on first reports. Set to 0 so renderers using
+  // hasPriorPeriod hide the indicator entirely.
+  const shareOfVoiceChange = hasPriorPeriod ? shareOfVoice - prevShareOfVoice : 0;
 
   // ── 7. Citations ──────────────────────────────────────────────────────────
   const [currentCitations, prevCitations] = await Promise.all([
@@ -555,6 +608,7 @@ export async function compileReportData(
       topPlatform, platformBreakdown[0]?.mentionRate ?? 0,
       worstPlatform, platformBreakdown.at(-1)?.mentionRate ?? 0,
       shareOfVoice,
+      hasPriorPeriod,
     ),
     generateActionRoadmap(
       project.brandName, topGaps, platformBreakdown, competitorComparison, auditScore,
@@ -573,6 +627,10 @@ export async function compileReportData(
     executiveSummary: {
       overallMentionRate,
       mentionRateChange,
+      hasPriorPeriod,
+      weightedScore: segments.weightedScore,
+      unbrandedMentionRate: segments.unbranded.mentionRate,
+      brandedMentionRate: segments.branded.mentionRate,
       totalPromptsTracked: project.prompts.length,
       platformsTracked,
       topPlatform,
