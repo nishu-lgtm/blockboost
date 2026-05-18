@@ -128,14 +128,35 @@
   --sidebar-ring: oklch(0.6 0.2155 264.05);
 }
 
+/* ── U10/U13: native system font + SF numeric niceties ───── */
+:root {
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui,
+    "Helvetica Neue", Arial, sans-serif;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    font-family: var(--font-sans);
+    /* SF stylistic alternates: cv05 distinguishes lowercase l from
+       uppercase I (matters for brand names); ss01/ss02 tighten certain
+       glyphs without affecting layout. Harmless on non-SF systems. */
+    font-feature-settings: "ss01", "ss02", "cv05";
+  }
   body {
     @apply bg-background text-foreground;
   }
-  html {
-    @apply font-sans;
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+  /* U12 — uniform icon weight. Lucide ships its icons with a `.lucide`
+     class; defaulting them to stroke-width 1.5 yields a thinner, more
+     SF-Symbols-like silhouette across the whole UI without per-call-site
+     overrides. Individual icons can still override with strokeWidth={2}. */
+  .lucide {
+    stroke-width: 1.5;
   }
 }
